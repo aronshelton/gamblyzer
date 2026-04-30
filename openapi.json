@@ -1,0 +1,2771 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Odds API v5",
+    "version": "5.0.0",
+    "description": "High-performance odds API backed by Valkey + Supabase RPC discovery."
+  },
+  "servers": [
+    {
+      "url": "https://v5.oddspapi.io/en"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    { "name": "common" },
+    { "name": "fixtures" },
+    { "name": "fixtures/odds" },
+    { "name": "futures" },
+    { "name": "futures/odds" },
+    { "name": "mapping" },
+    { "name": "media" },
+    { "name": "settlement" }
+  ],
+  "paths": {
+    "/bookmakers": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Bookmakers",
+        "operationId": "get_bookmakers__lang__bookmakers_get",
+        "description": "List bookmakers.\n\nReturns the bookmaker catalog available to the provided apiKey.\n\nLookup mode: `bookmakers` (optional filter list) + `playerProps` (optional capability filter).",
+        "parameters": [
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated bookmaker slugs. Supports `*` / `all` for wildcard."
+          },
+          {
+            "name": "playerProps",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] },
+            "description": "If true, only return bookmakers that support player proposition markets."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Bookmaker[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BookmakerList" },
+                "examples": {
+                  "example": {
+                    "summary": "Bookmaker list",
+                    "value": [
+                      {
+                        "slug": "188bet",
+                        "bookmakerName": "188BET",
+                        "active": true,
+                        "domain": "https://188bet.com",
+                        "serverGroup": "at4",
+                        "price": 10,
+                        "websocketPregame": true,
+                        "websocketLive": false,
+                        "maxDelayPregameInSec": 80.0,
+                        "maxDelayPregameMainInSec": 60.0,
+                        "availableCountries": ["ag", "al", "am", "ar", "at"]
+                      },
+                      {
+                        "slug": "1xbet",
+                        "bookmakerName": "1xBet",
+                        "active": true,
+                        "domain": "https://1xbet.com",
+                        "serverGroup": "de4",
+                        "price": 10,
+                        "websocketPregame": true,
+                        "websocketLive": true,
+                        "maxDelayPregameInSec": 30.0,
+                        "maxDelayLiveInSec": 4.0,
+                        "maxDelayPregameMainInSec": 6.0,
+                        "availableCountries": ["bo", "kr", "tn", "in"]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/sports": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Sports",
+        "operationId": "get_sports__lang__sports_get",
+        "description": "List sports.\n\nLookup mode: `sportIds` (optional filter list).",
+        "parameters": [
+          {
+            "name": "sportIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated sport IDs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Sport[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SportList" },
+                "examples": {
+                  "example": {
+                    "summary": "Sports list",
+                    "value": [
+                      { "sportId": 10, "slug": "soccer", "sportName": "Soccer" },
+                      { "sportId": 11, "slug": "basketball", "sportName": "Basketball" },
+                      { "sportId": 12, "slug": "tennis", "sportName": "Tennis" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/tournaments": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Tournaments",
+        "operationId": "get_tournaments__lang__tournaments_get",
+        "description": "List tournaments.\n\nLookup mode: `sportId` OR `tournamentIds`.\n\nDefault: if neither is provided, the API uses `sportId=11`.",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "tournamentIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated tournament IDs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Tournament[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TournamentList" },
+                "examples": {
+                  "example": {
+                    "summary": "Tournament list",
+                    "value": [
+                      {
+                        "tournamentId": 132,
+                        "sportId": 11,
+                        "tournamentSlug": "nba",
+                        "categorySlug": "usa",
+                        "tournamentName": "NBA",
+                        "categoryName": "USA"
+                      },
+                      {
+                        "tournamentId": 138,
+                        "sportId": 11,
+                        "tournamentSlug": "euroleague",
+                        "categorySlug": "international",
+                        "tournamentName": "Euroleague",
+                        "categoryName": "international"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/seasons": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Seasons",
+        "operationId": "get_seasons__lang__seasons_get",
+        "description": "List seasons.\n\nLookup mode: `seasonIds` OR `tournamentId`.",
+        "parameters": [
+          {
+            "name": "seasonIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated season IDs."
+          },
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Tournament ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Season[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SeasonList" },
+                "examples": {
+                  "example": {
+                    "summary": "Season list",
+                    "value": [
+                      {
+                        "seasonId": 119257,
+                        "tournamentId": 132,
+                        "sportId": 11,
+                        "seasonSlug": "nba-24-25",
+                        "seasonName": "NBA 24/25"
+                      },
+                      {
+                        "seasonId": 131631,
+                        "tournamentId": 132,
+                        "sportId": 11,
+                        "seasonSlug": "nba-25-26",
+                        "seasonName": "NBA 25/26"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/participants": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Participants",
+        "operationId": "get_participants__lang__participants_get",
+        "description": "List participants.\n\nLookup mode: `participantIds` OR `sportId` OR `playerId`.",
+        "parameters": [
+          {
+            "name": "participantIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated participant IDs."
+          },
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single player ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Participant[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ParticipantList" },
+                "examples": {
+                  "example": {
+                    "summary": "Participants list",
+                    "value": [
+                      { "participantId": 3409, "sportId": 11, "name": "Chicago Bulls", "participantShortName": "Bulls", "participantAbbr": "CHI" },
+                      { "participantId": 3410, "sportId": 11, "name": "Milwaukee Bucks", "participantShortName": "Bucks", "participantAbbr": "MIL" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/players": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Players",
+        "operationId": "get_players__lang__players_get",
+        "description": "List players.\n\nLookup mode: `playerIds` OR `participantId` OR `sportId`.",
+        "parameters": [
+          {
+            "name": "playerIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated player IDs."
+          },
+          {
+            "name": "participantId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single participant ID."
+          },
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Player[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlayerList" },
+                "examples": {
+                  "example": {
+                    "summary": "Players list",
+                    "value": [
+                      { "playerId": 607468, "playerName": "Jokic, Nikola" },
+                      { "playerId": 607336, "playerName": "Antetokounmpo, Giannis" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/venues": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Venues",
+        "operationId": "get_venues__lang__venues_get",
+        "description": "List venues by explicit IDs.\n\nName fields are returned in the requested language when available.",
+        "parameters": [
+          {
+            "name": "venueIds",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Comma/space-separated venue IDs, e.g. `1234,5678`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Venue[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Venue" }
+                },
+                "examples": {
+                  "example": {
+                    "summary": "Venues list",
+                    "value": [
+                      { "venueId": 1234, "venueSlug": "camp-nou", "venueName": "Camp Nou", "venueLocation": "Barcelona, Spain" },
+                      { "venueId": 5678, "venueSlug": "state-farm-arena", "venueName": "State Farm Arena", "venueLocation": "Atlanta, USA" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/markets": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Markets",
+        "operationId": "get_markets__lang__markets_get",
+        "description": "List markets.\n\nLookup mode: `marketIds` OR `sportId` OR `outcomeIds`.",
+        "parameters": [
+          {
+            "name": "marketIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated market IDs."
+          },
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "outcomeIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma- or space-separated outcome IDs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Market[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MarketList" },
+                "examples": {
+                  "example": {
+                    "summary": "Markets list",
+                    "value": [
+                      {
+                        "marketId": 111,
+                        "marketLength": 2,
+                        "sportId": 11,
+                        "playerProp": false,
+                        "handicap": 0.0,
+                        "period": "result",
+                        "marketType": "moneyline",
+                        "marketName": "Winner (incl. overtime)",
+                        "marketNameShort": "Winner",
+                        "outcomes": [
+                          { "outcomeId": 111, "outcomeName": "1" },
+                          { "outcomeId": 112, "outcomeName": "2" }
+                        ]
+                      },
+                      {
+                        "marketId": 113,
+                        "marketLength": 3,
+                        "sportId": 11,
+                        "playerProp": false,
+                        "handicap": 0.0,
+                        "period": "fulltime",
+                        "marketType": "1x2",
+                        "marketName": "Regular Time Result",
+                        "marketNameShort": "1X2",
+                        "outcomes": [
+                          { "outcomeId": 113, "outcomeName": "1" },
+                          { "outcomeId": 114, "outcomeName": "X" },
+                          { "outcomeId": 115, "outcomeName": "2" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/currencies": {
+      "get": {
+        "tags": ["common"],
+        "summary": "Get Currencies",
+        "operationId": "get_currencies__lang__currencies_get",
+        "description": "List currencies and conversion values.\n\nLookup mode: `currency` (optional filter).",
+        "parameters": [
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Currency code (case-insensitive), e.g. EUR, usd, BTC."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Currency[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CurrencyList" },
+                "examples": {
+                  "example": {
+                    "summary": "Currencies list",
+                    "value": [
+                      { "currency": "BTC", "updatedAt": "2025-12-25T19:00:03+00:00", "currencyValue": 0.00001153 },
+                      { "currency": "EUR", "updatedAt": "2025-12-25T20:58:02+00:00", "currencyValue": 0.848627 }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures": {
+      "get": {
+        "tags": ["fixtures"],
+        "summary": "Fixtures Filtered",
+        "operationId": "fixtures_filtered__lang__fixtures_get",
+        "description": "List fixtures.\n\nLookup mode: `fixtureIds` OR filters (`sportId`, `tournamentId`, `statusId`, optional time range).\n\nIf `bookmakers` is present, bookmaker meta is included and results may be filtered by mapping availability.",
+        "parameters": [
+          {
+            "name": "fixtureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated fixture IDs (fast path)."
+          },
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single tournament ID."
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs. If present (even empty), includes bookmaker META and filters by mapping."
+          },
+          {
+            "name": "startTimeFrom",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Start time from (epoch seconds)."
+          },
+          {
+            "name": "startTimeTo",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Start time to (epoch seconds)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Fixture[] (fixture meta objects)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureList" },
+                "examples": {
+                  "example": {
+                    "summary": "Fixtures list",
+                    "value": [
+                      {
+                        "fixtureId": "id1100013270505056",
+                        "status": { "live": true, "statusId": 1, "statusName": "Live" },
+                        "sport": { "sportId": 11, "sportName": "Basketball" },
+                        "tournament": { "tournamentId": 132, "tournamentName": "NBA", "categoryName": "USA" },
+                        "season": { "seasonId": 131631, "seasonName": "NBA 25/26", "seasonRound": null },
+                        "venue": { "venueId": 6054, "venueName": "Madison Square Garden", "venueLocation": "New York, NY, USA" },
+                        "startTime": 1776729600,
+                        "trueStartTime": "2026-04-21T00:09:08+00:00",
+                        "trueEndTime": null,
+                        "participants": {
+                          "participant1Id": 3421,
+                          "participant1RotNr": 303,
+                          "participant1Name": "New York Knicks",
+                          "participant1ShortName": "New York",
+                          "participant1Abbr": "NYK",
+                          "participant2Id": 3423,
+                          "participant2RotNr": 302,
+                          "participant2Name": "Atlanta Hawks",
+                          "participant2ShortName": "Atlanta",
+                          "participant2Abbr": "ATL"
+                        },
+                        "scores": {
+                          "p1": {
+                            "period": "p1",
+                            "participant1Score": 32,
+                            "participant2Score": 23,
+                            "updatedAt": "2026-04-21T00:59:42.287458+00:00"
+                          },
+                          "p2": {
+                            "period": "p2",
+                            "participant1Score": 29,
+                            "participant2Score": 31,
+                            "updatedAt": "2026-04-21T01:25:05.532295+00:00"
+                          },
+                          "result": {
+                            "period": "result",
+                            "participant1Score": 61,
+                            "participant2Score": 54,
+                            "updatedAt": "2026-04-21T01:24:37.154297+00:00"
+                          }
+                        },
+                        "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                        "expectedPeriods": 4,
+                        "periodLength": 12,
+                        "externalProviders": {
+                          "betgeniusId": 13808265,
+                          "betradarId": 70505056,
+                          "flashscoreId": "nTPkYS3K",
+                          "mollybetId": "2026-04-21,29093,29096",
+                          "oddinId": null,
+                          "opticoddsId": "20260421A1AB4678",
+                          "pinnacleId": 1628730839,
+                          "sofascoreId": 15935017,
+                          "lsportsId": null,
+                          "txoddsId": null
+                        },
+                        "bookmakers": {}
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/today": {
+      "get": {
+        "tags": ["fixtures"],
+        "summary": "Fixtures Today",
+        "operationId": "fixtures_today__lang__fixtures_today_get",
+        "description": "List today's fixtures.\n\nLookup mode: optional filters (`bookmakers`, `sportId`, `tournamentId`).",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single tournament ID."
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Fixture[] (fixture meta objects)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureList" },
+                "examples": {
+                  "example": {
+                    "summary": "Today's fixtures",
+                    "value": [
+                      {
+                        "fixtureId": "id1100013270505136",
+                        "status": { "live": false, "statusId": 0, "statusName": "Pre-Game" },
+                        "sport": { "sportId": 11, "sportName": "Basketball" },
+                        "tournament": { "tournamentId": 132, "tournamentName": "NBA", "categoryName": "USA" },
+                        "season": { "seasonId": 131631, "seasonName": "NBA 25/26", "seasonRound": null },
+                        "venue": { "venueId": 6112, "venueName": "Frost Bank Center", "venueLocation": "San Antonio, TX, USA" },
+                        "startTime": 1776816000,
+                        "trueStartTime": null,
+                        "trueEndTime": null,
+                        "participants": {
+                          "participant1Id": 3429,
+                          "participant1RotNr": 301,
+                          "participant1Name": "San Antonio Spurs",
+                          "participant1ShortName": "San Antonio",
+                          "participant1Abbr": "SAS",
+                          "participant2Id": 3414,
+                          "participant2RotNr": 300,
+                          "participant2Name": "Portland Trail Blazers",
+                          "participant2ShortName": "Portland",
+                          "participant2Abbr": "POR"
+                        },
+                        "scores": {},
+                        "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                        "expectedPeriods": 4,
+                        "periodLength": 12,
+                        "externalProviders": {
+                          "betgeniusId": 13808312,
+                          "betradarId": 70505136,
+                          "flashscoreId": "ruuPcnS7",
+                          "mollybetId": "2026-04-22,29115,29108",
+                          "oddinId": null,
+                          "opticoddsId": "20260422A553CF52",
+                          "pinnacleId": 1628488896,
+                          "sofascoreId": 15934995,
+                          "lsportsId": null,
+                          "txoddsId": null
+                        },
+                        "bookmakers": {}
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/live": {
+      "get": {
+        "tags": ["fixtures"],
+        "summary": "Fixtures Live",
+        "operationId": "fixtures_live__lang__fixtures_live_get",
+        "description": "List live fixtures.\n\nLookup mode: optional filters (`bookmakers`, `sportId`, `tournamentId`).",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single tournament ID."
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns Fixture[] (live only)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureList" },
+                "examples": {
+                  "example": {
+                    "summary": "Fixtures list",
+                    "value": [
+                      {
+                        "fixtureId": "id1100013270505056",
+                        "status": { "live": true, "statusId": 1, "statusName": "Live" },
+                        "sport": { "sportId": 11, "sportName": "Basketball" },
+                        "tournament": { "tournamentId": 132, "tournamentName": "NBA", "categoryName": "USA" },
+                        "season": { "seasonId": 131631, "seasonName": "NBA 25/26", "seasonRound": null },
+                        "venue": { "venueId": 6054, "venueName": "Madison Square Garden", "venueLocation": "New York, NY, USA" },
+                        "startTime": 1776729600,
+                        "trueStartTime": "2026-04-21T00:09:08+00:00",
+                        "trueEndTime": null,
+                        "participants": {
+                          "participant1Id": 3421,
+                          "participant1RotNr": 303,
+                          "participant1Name": "New York Knicks",
+                          "participant1ShortName": "New York",
+                          "participant1Abbr": "NYK",
+                          "participant2Id": 3423,
+                          "participant2RotNr": 302,
+                          "participant2Name": "Atlanta Hawks",
+                          "participant2ShortName": "Atlanta",
+                          "participant2Abbr": "ATL"
+                        },
+                        "scores": {
+                          "p1": {
+                            "period": "p1",
+                            "participant1Score": 32,
+                            "participant2Score": 23,
+                            "updatedAt": "2026-04-21T00:59:42.287458+00:00"
+                          },
+                          "p2": {
+                            "period": "p2",
+                            "participant1Score": 29,
+                            "participant2Score": 31,
+                            "updatedAt": "2026-04-21T01:25:05.532295+00:00"
+                          },
+                          "result": {
+                            "period": "result",
+                            "participant1Score": 61,
+                            "participant2Score": 54,
+                            "updatedAt": "2026-04-21T01:24:37.154297+00:00"
+                          }
+                        },
+                        "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                        "expectedPeriods": 4,
+                        "periodLength": 12,
+                        "externalProviders": {
+                          "betgeniusId": 13808265,
+                          "betradarId": 70505056,
+                          "flashscoreId": "nTPkYS3K",
+                          "mollybetId": "2026-04-21,29093,29096",
+                          "oddinId": null,
+                          "opticoddsId": "20260421A1AB4678",
+                          "pinnacleId": 1628730839,
+                          "sofascoreId": 15935017,
+                          "lsportsId": null,
+                          "txoddsId": null
+                        },
+                        "bookmakers": {}
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/odds": {
+      "get": {
+        "tags": ["fixtures/odds"],
+        "summary": "Fixture Odds",
+        "operationId": "fixtures_odds__lang__fixtures_odds_get",
+        "description": "Get current odds for a fixture.\n\nLookup mode: required `fixtureId` + optional `bookmakers`, optional filtering flags.\n\nIf `since` is provided, returns odds updates with `changedAt >= since`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/fixtureIdStringRequired" },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs (default: all)."
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "changedAt >= since (ms)"
+          },
+          {
+            "name": "marketActive",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] },
+            "description": "If set, filter by marketActive flag."
+          },
+          {
+            "name": "mainLine",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] },
+            "description": "If set, filter by mainLine flag."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FixtureOddsResponse (fixture meta + odds + bookmaker meta)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureOddsResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Fixture odds",
+                    "value": {
+                      "fixtureId": "id1100013270505136",
+                      "status": { "live": false, "statusId": 0, "statusName": "Pre-Game" },
+                      "sport": { "sportId": 11, "sportName": "Basketball" },
+                      "tournament": { "tournamentId": 132, "tournamentName": "NBA", "categoryName": "USA" },
+                      "season": { "seasonId": 131631, "seasonName": "NBA 25/26", "seasonRound": null },
+                      "venue": { "venueId": 6112, "venueName": "Frost Bank Center", "venueLocation": "San Antonio, TX, USA" },
+                      "startTime": 1776816000,
+                      "trueStartTime": null,
+                      "trueEndTime": null,
+                      "participants": {
+                        "participant1Id": 3429,
+                        "participant1RotNr": 301,
+                        "participant1Name": "San Antonio Spurs",
+                        "participant1ShortName": "San Antonio",
+                        "participant1Abbr": "SAS",
+                        "participant2Id": 3414,
+                        "participant2RotNr": 300,
+                        "participant2Name": "Portland Trail Blazers",
+                        "participant2ShortName": "Portland",
+                        "participant2Abbr": "POR"
+                      },
+                      "scores": {},
+                      "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                      "expectedPeriods": 4,
+                      "periodLength": 12,
+                      "externalProviders": {
+                        "betgeniusId": 13808312,
+                        "betradarId": 70505136,
+                        "flashscoreId": "ruuPcnS7",
+                        "mollybetId": "2026-04-22,29115,29108",
+                        "oddinId": null,
+                        "opticoddsId": "20260422A553CF52",
+                        "pinnacleId": 1628488896,
+                        "sofascoreId": 15934995,
+                        "lsportsId": null,
+                        "txoddsId": null
+                      },
+                      "odds": {
+                        "pinnacle": {
+                          "id1100013270505136:pinnacle:111:0": {
+                            "bookmaker": "pinnacle",
+                            "outcomeId": 111,
+                            "playerId": 0,
+                            "active": true,
+                            "price": 1.155,
+                            "marketActive": true,
+                            "mainLine": true,
+                            "bookmakerMarketId": "line/4/487/1628488896/3565645414/0/moneyline",
+                            "bookmakerOutcomeId": "home",
+                            "bookmakerChangedAt": 1776717657043,
+                            "limit": 19354,
+                            "priceAmerican": -645,
+                            "priceFractional": "11/71",
+                            "marketId": 111,
+                            "changedAt": 1776717657402
+                          },
+                          "id1100013270505136:pinnacle:112:0": {
+                            "bookmaker": "pinnacle",
+                            "outcomeId": 112,
+                            "playerId": 0,
+                            "active": true,
+                            "price": 5.77,
+                            "marketActive": true,
+                            "mainLine": true,
+                            "bookmakerMarketId": "line/4/487/1628488896/3565645414/0/moneyline",
+                            "bookmakerOutcomeId": "away",
+                            "bookmakerChangedAt": 1776717657043,
+                            "limit": 3000,
+                            "priceAmerican": 477,
+                            "priceFractional": "477/100",
+                            "marketId": 111,
+                            "changedAt": 1776717657402
+                          }
+                        }
+                      },
+                      "bookmakers": {
+                        "pinnacle": {
+                          "bookmaker": "pinnacle",
+                          "bookmakerFixtureId": "1628488896",
+                          "fixturePath": "https://www.pinnacle.com/en/e/e/e/1628488896/#all",
+                          "hasOdds": true,
+                          "staleOdds": false,
+                          "staleOddsResponseCode": null,
+                          "suspended": false,
+                          "participantsRotated": false,
+                          "meta": null,
+                          "updatedAt": "2026-04-20T13:54:39.472368+00:00"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/odds/clv": {
+      "get": {
+        "tags": ["fixtures/odds"],
+        "summary": "Fixture Odds CLV",
+        "operationId": "fixtures_odds_clv__lang__fixtures_odds_clv_get",
+        "description": "Get opening vs closing line values (OLV/CLV) for a fixture.\n\nLookup mode: required `fixtureId` + optional `bookmakers` OR optional `oddsIds`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/fixtureIdStringRequired" },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs (default: all)."
+          },
+          {
+            "name": "oddsIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Optional: comma/space-separated oddsIds to restrict the response."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FixtureClvResponse (fixture meta + OLV/CLV pairs)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureClvResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Fixture CLV/OLV",
+                    "value": {
+                      "fixtureId": "id1400003160574219",
+                      "status": { "live": false, "statusId": 2, "statusName": "Finished" },
+                      "sport": { "sportId": 14, "sportName": "American Football" },
+                      "tournament": { "tournamentId": 31, "tournamentName": "NFL", "categoryName": "USA" },
+                      "season": { "seasonId": null, "seasonName": null, "seasonRound": null },
+                      "venue": { "venueId": null, "venueName": null, "venueLocation": null },
+                      "startTime": 1766685600,
+                      "trueStartTime": "2025-12-25T18:00:17.744256+00:00",
+                      "trueEndTime": "2025-12-25T21:09:09.345372+00:00",
+                      "participants": {
+                        "participant1Id": 4423,
+                        "participant1RotNr": null,
+                        "participant1Name": "Minnesota Vikings",
+                        "participant1ShortName": "Vikings",
+                        "participant1Abbr": null,
+                        "participant2Id": 4419,
+                        "participant2RotNr": null,
+                        "participant2Name": "Detroit Lions",
+                        "participant2ShortName": "Lions",
+                        "participant2Abbr": null
+                      },
+                      "scores": {},
+                      "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                      "expectedPeriods": 4,
+                      "periodLength": 15,
+                      "externalProviders": {},
+                      "odds": {
+                        "bet365": {
+                          "id1400003160574219:bet365:14198:0": {
+                            "clv": {
+                              "bookmaker": "bet365",
+                              "outcomeId": 14198,
+                              "playerId": 0,
+                              "price": 1.952,
+                              "priceFractional": "",
+                              "priceAmerican": 0,
+                              "active": true,
+                              "limit": null,
+                              "changedAt": 1766361894121
+                            },
+                            "olv": {
+                              "bookmaker": "bet365",
+                              "outcomeId": 14198,
+                              "playerId": 0,
+                              "price": 1.952,
+                              "priceFractional": "",
+                              "priceAmerican": 0,
+                              "active": true,
+                              "limit": null,
+                              "changedAt": 1765975761422
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/odds/historical": {
+      "get": {
+        "tags": ["fixtures/odds"],
+        "summary": "Fixture Odds Historical",
+        "operationId": "fixtures_odds_historical__lang__fixtures_odds_historical_get",
+        "description": "Get historical odds timeline for a fixture.\n\nLookup mode: required `fixtureId` + (`bookmaker` required when `oddsIds` is not provided) OR `oddsIds`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/fixtureIdStringRequired" },
+          {
+            "name": "bookmaker",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Single bookmaker slug. RULE: If oddsIds is NOT provided, you must pass exactly ONE bookmaker."
+          },
+          {
+            "name": "oddsIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Optional: comma/space-separated oddsIds to restrict the response."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FixtureHistoricalOddsResponse (fixture meta + time-series odds)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureHistoricalOddsResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Historical odds",
+                    "value": {
+                      "fixtureId": "id1400003160574219",
+                      "status": { "live": false, "statusId": 2, "statusName": "Finished" },
+                      "sport": { "sportId": 14, "sportName": "American Football" },
+                      "tournament": { "tournamentId": 31, "tournamentName": "NFL", "categoryName": "USA" },
+                      "season": { "seasonId": null, "seasonName": null, "seasonRound": null },
+                      "venue": { "venueId": null, "venueName": null, "venueLocation": null },
+                      "startTime": 1766685600,
+                      "trueStartTime": "2025-12-25T18:00:17.744256+00:00",
+                      "trueEndTime": "2025-12-25T21:09:09.345372+00:00",
+                      "participants": {
+                        "participant1Id": 4423,
+                        "participant1RotNr": null,
+                        "participant1Name": "Minnesota Vikings",
+                        "participant1ShortName": "Vikings",
+                        "participant1Abbr": null,
+                        "participant2Id": 4419,
+                        "participant2RotNr": null,
+                        "participant2Name": "Detroit Lions",
+                        "participant2ShortName": "Lions",
+                        "participant2Abbr": null
+                      },
+                      "scores": {},
+                      "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                      "expectedPeriods": 4,
+                      "periodLength": 15,
+                      "externalProviders": {},
+                      "odds": {
+                        "bet365": {
+                          "id1400003160574219:bet365:14198:0": {
+                            "1765975761422": {
+                              "bookmaker": "bet365",
+                              "outcomeId": 14198,
+                              "playerId": 0,
+                              "price": 1.952,
+                              "active": true,
+                              "changedAt": 1765975761422,
+                              "marketActive": true
+                            },
+                            "1766361894121": {
+                              "bookmaker": "bet365",
+                              "outcomeId": 14198,
+                              "playerId": 0,
+                              "price": 1.952,
+                              "active": true,
+                              "changedAt": 1766361894121,
+                              "marketActive": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/odds/main": {
+      "get": {
+        "tags": ["fixtures/odds"],
+        "summary": "Fixtures Odds Main",
+        "operationId": "odds_main__lang__fixtures_odds_main_get",
+        "description": "Get current main odds for multiple fixtures.\n\nLookup mode: provide exactly one of:\n- `tournamentId` (recommended)\n- `fixtureIds` (fast path)\n\nIf `since` is provided, returns odds updates with `changedAt >= since`.",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single tournamentId. Required if `fixtureIds` is not provided."
+          },
+          {
+            "name": "fixtureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated fixtureIds (fast path). Required if `tournamentId` is not provided."
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs (default: all)."
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "changedAt >= since (ms). If provided, returns also inactive odds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns an array of fixtures (fixture meta + odds + bookmaker meta).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/FixtureOddsResponse" }
+                },
+                "examples": {
+                  "example": {
+                    "summary": "Odds by tournament (fixtures list with odds)",
+                    "value": [
+                      {
+                        "fixtureId": "id1400003160574217",
+                        "status": { "live": false, "statusId": 0, "statusName": "Pre-Game" },
+                        "sport": { "sportId": 14, "sportName": "American Football" },
+                        "tournament": { "tournamentId": 31, "tournamentName": "NFL", "categoryName": "USA" },
+                        "season": { "seasonId": null, "seasonName": null, "seasonRound": null },
+                        "venue": { "venueId": null, "venueName": null, "venueLocation": null },
+                        "startTime": 1766698200,
+                        "trueStartTime": null,
+                        "trueEndTime": null,
+                        "participants": {
+                          "participant1Id": 4423,
+                          "participant1RotNr": null,
+                          "participant1Name": "Minnesota Vikings",
+                          "participant1ShortName": "Vikings",
+                          "participant1Abbr": null,
+                          "participant2Id": 4419,
+                          "participant2RotNr": null,
+                          "participant2Name": "Detroit Lions",
+                          "participant2ShortName": "Lions",
+                          "participant2Abbr": null
+                        },
+                        "scores": {},
+                        "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                        "expectedPeriods": 4,
+                        "periodLength": 15,
+                        "externalProviders": {
+                          "betgeniusId": null,
+                          "betradarId": 67432516,
+                          "flashscoreId": "hzkPCh9e",
+                          "mollybetId": "2026-01-10,21618,79446",
+                          "oddinId": null,
+                          "opticoddsId": "2026011039A14E46",
+                          "pinnacleId": 1621898317,
+                          "sofascoreId": null,
+                          "lsportsId": null,
+                          "txoddsId": null
+                        },
+                        "odds": {},
+                        "bookmakers": {
+                          "stake": {
+                            "bookmaker": "stake",
+                            "bookmakerFixtureId": "46173997-xx-yy",
+                            "fixturePath": null,
+                            "hasOdds": false,
+                            "staleOdds": false,
+                            "staleOddsResponseCode": null,
+                            "suspended": false,
+                            "participantsRotated": false,
+                            "meta": null,
+                            "updatedAt": "2026-01-05T05:16:44.746812+00:00"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/mapping": {
+      "get": {
+        "tags": ["mapping"],
+        "summary": "Fixture Mapping",
+        "operationId": "fixture_mapping__lang__fixtures_mapping_get",
+        "description": "List fixture mappings for external bookmakers.\n\nLookup mode: `bookmaker` (optional) + `fixtureIds` OR `bookmakerFixtureIds`.",
+        "parameters": [
+          {
+            "name": "bookmaker",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Single bookmaker slug."
+          },
+          {
+            "name": "fixtureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated internal fixtureIds."
+          },
+          {
+            "name": "bookmakerFixtureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated provider fixture IDs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FixtureMapping[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureMappingList" },
+                "examples": {
+                  "example": {
+                    "summary": "Fixture mapping rows",
+                    "value": [
+                      {
+                        "bookmaker": "pinnacle",
+                        "fixtureId": "id1100013262924759",
+                        "bookmakerFixtureId": "1621504021",
+                        "participantsRotated": false
+                      },
+                      {
+                        "bookmaker": "pinnacle",
+                        "fixtureId": "id1100013262924769",
+                        "bookmakerFixtureId": "1621493680",
+                        "participantsRotated": false
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/fixtures/settlement": {
+      "get": {
+        "tags": ["settlement"],
+        "summary": "Fixture Settlement",
+        "operationId": "fixtures_settlement__lang__fixtures_settlement_get",
+        "description": "Get settlements for a fixture.\n\nLookup mode: required `fixtureId` + optional `outcomeId`, optional `playerId`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/fixtureIdStringRequired" },
+          {
+            "name": "outcomeId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Optional: restrict settlements to a single outcomeId."
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Optional: restrict settlements to a single playerId."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FixtureSettlementResponse (fixture meta + settlements[])",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FixtureSettlementResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Fixture settlement",
+                    "value": {
+                      "fixtureId": "id1400003160574219",
+                      "status": { "live": false, "statusId": 2, "statusName": "Finished" },
+                      "sport": { "sportId": 14, "sportName": "American Football" },
+                      "tournament": { "tournamentId": 31, "tournamentName": "NFL", "categoryName": "USA" },
+                      "season": { "seasonId": null, "seasonName": null, "seasonRound": null },
+                      "venue": { "venueId": null, "venueName": null, "venueLocation": null },
+                      "startTime": 1766685600,
+                      "trueStartTime": "2025-12-25T18:00:17.744256+00:00",
+                      "trueEndTime": "2025-12-25T21:09:09.345372+00:00",
+                      "participants": {
+                        "participant1Id": 4423,
+                        "participant1RotNr": null,
+                        "participant1Name": "Minnesota Vikings",
+                        "participant1ShortName": "Vikings",
+                        "participant1Abbr": null,
+                        "participant2Id": 4419,
+                        "participant2RotNr": null,
+                        "participant2Name": "Detroit Lions",
+                        "participant2ShortName": "Lions",
+                        "participant2Abbr": null
+                      },
+                      "scores": {
+                        "result": {
+                          "period": "result",
+                          "participant1Score": 23,
+                          "participant2Score": 30,
+                          "updatedAt": "2025-12-25T20:59:04.218194+00:00"
+                        }
+                      },
+                      "clock": { "currentPeriod": null, "currentTime": null, "remainingTime": null, "remainingTimeInPeriod": null, "stopped": null },
+                      "expectedPeriods": 4,
+                      "periodLength": 15,
+                      "externalProviders": {
+                        "betgeniusId": 12281950,
+                        "betradarId": 60574219,
+                        "flashscoreId": "lWoCl15F",
+                        "mollybetId": "2025-12-25,10050390,21622",
+                        "opticoddsId": "20251225B0C134B3",
+                        "pinnacleId": 1621042823,
+                        "sofascoreId": 13897686
+                      },
+                      "settlements": [
+                        {
+                          "marketId": 101,
+                          "marketType": "1x2",
+                          "outcomeId": 142,
+                          "playerId": 0,
+                          "status": "won",
+                          "team1Score": 23,
+                          "team2Score": 30,
+                          "periods": ["fulltime"],
+                          "margin": 7.0
+                        },
+                        {
+                          "marketId": 101,
+                          "marketType": "1x2",
+                          "outcomeId": 141,
+                          "playerId": 0,
+                          "status": "lost",
+                          "team1Score": 23,
+                          "team2Score": 30,
+                          "periods": ["fulltime"],
+                          "margin": -7.0,
+                          "reason": "result"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures": {
+      "get": {
+        "tags": ["futures"],
+        "summary": "Futures Filtered",
+        "operationId": "futures_filtered__lang__futures_get",
+        "description": "List futures.\n\nLookup mode: `futureIds` OR `sportId` OR `tournamentId` (at least one).",
+        "parameters": [
+          {
+            "name": "futureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma-separated internal future IDs."
+          },
+          {
+            "name": "sportId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single sport ID."
+          },
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "Single tournament ID."
+          },
+          {
+            "name": "startTimeFrom",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] }
+          },
+          {
+            "name": "startTimeTo",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] }
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "If provided, includes bookmakers meta per future."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FutureMeta[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FutureMetaList" },
+                "examples": {
+                  "example": {
+                    "summary": "Futures list",
+                    "value": [
+                      {
+                        "futureId": "pm6980037088158379224",
+                        "status": { "live": true, "statusId": 1, "statusName": "Live" },
+                        "sport": { "sportId": 69, "sportName": "Politics" },
+                        "tournament": { "tournamentId": 800370, "tournamentName": "2025 Predictions", "categoryName": "Politics" },
+                        "season": { "seasonId": 8815837922, "seasonName": "Macron out by...?" },
+                        "startTime": 1735932904,
+                        "endTime": 1782820800,
+                        "market": {
+                          "marketId": 4,
+                          "marketName": null,
+                          "marketType": null
+                        },
+                        "participants": [],
+                        "externalProviders": {
+                          "betradarId": null,
+                          "flashscoreId": null,
+                          "opticoddsId": null,
+                          "polymarketId": "16263",
+                          "kalshiId": null,
+                          "sofascoreId": null
+                        },
+                        "bookmakers": {}
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures/live": {
+      "get": {
+        "tags": ["futures"],
+        "summary": "Futures Live",
+        "operationId": "futures_live__lang__futures_live_get",
+        "description": "List live futures.\n\nLookup mode: optional `sportId` / `tournamentId` filters.",
+        "parameters": [
+          { "name": "sportId", "in": "query", "required": false, "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] } },
+          { "name": "tournamentId", "in": "query", "required": false, "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] } },
+          { "name": "bookmakers", "in": "query", "required": false, "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FutureMeta[] (live only)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FutureMetaList" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures/odds": {
+      "get": {
+        "tags": ["futures/odds"],
+        "summary": "Future Odds",
+        "operationId": "futures_odds__lang__futures_odds_get",
+        "description": "Get latest odds for a future.\n\nLookup mode: required `futureId` + optional filters (`bookmakers`, `since`, `mainLines`, `includeFuture`).",
+        "parameters": [
+          { "$ref": "#/components/parameters/futureIdStringRequired" },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs (default: all)"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+            "description": "createdAt >= since (unix sec)"
+          },
+          {
+            "name": "mainLines",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false },
+            "description": "Only return main lines"
+          },
+          {
+            "name": "includeFuture",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false },
+            "description": "If true, includes futureMeta in the response."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FutureOddsResponse",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FutureOddsResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Future odds",
+                    "value": {
+                      "futureId": "pm6980037088158379224",
+                      "bookmakers": {
+                        "polymarket": {
+                          "odds": [
+                            {
+                              "oddsId": "pm6980037088158379224:polymarket:5432",
+                              "bookmaker": "polymarket",
+                              "participantId": 5432,
+                              "price": 3.8,
+                              "active": true,
+                              "changedAt": 1776667441000
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures/odds/clv": {
+      "get": {
+        "tags": ["futures/odds"],
+        "summary": "Future Odds CLV",
+        "operationId": "futures_odds_clv__lang__futures_odds_clv_get",
+        "description": "Get OLV and CLV for a future’s odds.\n\nLookup mode: required `futureId` + optional `bookmakers` OR optional `oddsIds`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/futureIdStringRequired" },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs (default: all)"
+          },
+          {
+            "name": "oddsIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Optional: comma/space-separated oddsIds to restrict the response."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FutureOddsClvResponse",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FutureOddsClvResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Future CLV/OLV",
+                    "value": {
+                      "futureId": "pm6980037088158379224",
+                      "odds": {
+                        "polymarket": {
+                          "pm6980037088158379224:polymarket:5432": {
+                            "olv": {
+                              "bookmaker": "polymarket",
+                              "participantId": 5432,
+                              "price": 3.2,
+                              "active": true,
+                              "changedAt": 1776000000000
+                            },
+                            "clv": {
+                              "bookmaker": "polymarket",
+                              "participantId": 5432,
+                              "price": 3.8,
+                              "active": true,
+                              "changedAt": 1776667000000
+                            }
+                          }
+                        }
+                      },
+                      "bookmakers": {
+                        "polymarket": {
+                          "bookmaker": "polymarket",
+                          "bookmakerFutureId": "16263",
+                          "participantsRotated": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures/odds/historical": {
+      "get": {
+        "tags": ["futures/odds"],
+        "summary": "Future Odds Historical",
+        "operationId": "futures_odds_historical__lang__futures_odds_historical_get",
+        "description": "Get historical odds changes for a future.\n\nLookup mode: required `futureId` + (`bookmakers` required when `oddsIds` is not provided) OR `oddsIds`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/futureIdStringRequired" },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated bookmaker slugs. RULE: If oddsIds is NOT provided, you must pass exactly ONE bookmaker."
+          },
+          {
+            "name": "oddsIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Optional: comma/space-separated oddsIds to restrict the response."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FutureOddsHistoricalResponse",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FutureOddsHistoricalResponse" },
+                "examples": {
+                  "example": {
+                    "summary": "Future historical odds",
+                    "value": {
+                      "futureId": "pm6980037088158379224",
+                      "odds": {
+                        "polymarket": {
+                          "pm6980037088158379224:polymarket:5432": {
+                            "1776000000000": {
+                              "bookmaker": "polymarket",
+                              "participantId": 5432,
+                              "price": 3.2,
+                              "active": true,
+                              "changedAt": 1776000000000
+                            },
+                            "1776667000000": {
+                              "bookmaker": "polymarket",
+                              "participantId": 5432,
+                              "price": 3.8,
+                              "active": true,
+                              "changedAt": 1776667000000
+                            }
+                          }
+                        }
+                      },
+                      "bookmakers": {
+                        "polymarket": {
+                          "bookmaker": "polymarket",
+                          "bookmakerFutureId": "16263",
+                          "participantsRotated": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures/mapping": {
+      "get": {
+        "tags": ["mapping"],
+        "summary": "Future Mapping",
+        "operationId": "future_mapping__lang__futures_mapping_get",
+        "description": "Map internal future IDs to bookmaker/provider future IDs.\n\nLookup mode: required `bookmaker` + (`futureIds` OR `bookmakerFutureIds`).",
+        "parameters": [
+          {
+            "name": "bookmaker",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Single bookmaker slug."
+          },
+          {
+            "name": "futureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated internal futureIds."
+          },
+          {
+            "name": "bookmakerFutureIds",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+            "description": "Comma/space-separated provider future IDs."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns FutureMapping[]",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FutureMappingList" },
+                "examples": {
+                  "example": {
+                    "summary": "Future mapping rows",
+                    "value": [
+                      {
+                        "bookmaker": "pinnacle",
+                        "futureId": "id11000132131631",
+                        "bookmakerFutureId": "1621504021",
+                        "participantsRotated": false
+                      },
+                      {
+                        "bookmaker": "pinnacle",
+                        "futureId": "id11041564132792",
+                        "bookmakerFutureId": "1621493680",
+                        "participantsRotated": false
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/futures/settlement": {
+      "get": {
+        "tags": ["settlement"],
+        "summary": "Future Settlement",
+        "operationId": "futures_settlement__lang__futures_settlement_get",
+        "description": "Get settlements for a future.\n\nCurrently not available.",
+        "parameters": [{ "$ref": "#/components/parameters/futureIdStringRequired" }],
+        "responses": {
+          "501": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/media/bookmakers/{slug}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "Media Bookmaker",
+        "operationId": "media_bookmaker__lang__media_bookmakers__slug__get",
+        "description": "Get bookmaker logo.\n\nReturns an HTTP redirect to the image asset.\n\nResponse: 302 with `Location` header (final resource typically WebP).",
+        "parameters": [{ "$ref": "#/components/parameters/slugPath" }],
+        "responses": {
+          "302": { "$ref": "#/components/responses/MediaRedirect" },
+          "200": {
+            "description": "Final image response (when redirect is followed and/or proxy mode is used).",
+            "content": { "image/webp": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/media/categories/{category}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "Media Category",
+        "operationId": "media_category__lang__media_categories__category__get",
+        "description": "Get category icon.\n\nReturns an HTTP redirect to the image asset.\n\nResponse: 302 with `Location` header (final resource typically SVG).",
+        "parameters": [{ "$ref": "#/components/parameters/categoryPath" }],
+        "responses": {
+          "302": { "$ref": "#/components/responses/MediaRedirect" },
+          "200": {
+            "description": "Final image response (when redirect is followed and/or proxy mode is used).",
+            "content": { "image/svg+xml": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/media/tournaments/{tournamentId}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "Media Tournament",
+        "operationId": "media_tournament__lang__media_tournaments__tournamentId__get",
+        "description": "Get tournament image.\n\nReturns an HTTP redirect to the image asset.\n\nResponse: 302 with `Location` header (final resource typically PNG).",
+        "parameters": [{ "$ref": "#/components/parameters/tournamentIdPath" }],
+        "responses": {
+          "302": { "$ref": "#/components/responses/MediaRedirect" },
+          "200": {
+            "description": "Final image response (when redirect is followed and/or proxy mode is used).",
+            "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+
+    "/media/participants/{participantId}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "Media Participant",
+        "operationId": "media_participant__lang__media_participants__participantId__get",
+        "description": "Get participant image.\n\nReturns an HTTP redirect to the image asset.\n\nResponse: 302 with `Location` header (final resource typically PNG).",
+        "parameters": [{ "$ref": "#/components/parameters/participantIdPath" }],
+        "responses": {
+          "302": { "$ref": "#/components/responses/MediaRedirect" },
+          "200": {
+            "description": "Final image response (when redirect is followed and/or proxy mode is used).",
+            "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    }
+  },
+
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "apiKey",
+        "description": "Your API key (query-based auth for v5)."
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Validation Error (framework-level)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+          }
+        }
+      },
+      "ApiError": {
+        "description": "API error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "examples": {
+              "invalid_filters": {
+                "summary": "Invalid filters",
+                "value": { "error": 400, "message": "Invalid filters.", "reason": "invalid_filters" }
+              },
+              "invalid_api_key": {
+                "summary": "Invalid apiKey",
+                "value": { "error": 401, "message": "invalid apiKey", "reason": "invalid_api_key" }
+              },
+              "rate_limited": {
+                "summary": "Rate limited",
+                "value": { "error": 429, "message": "rate limit exceeded", "reason": "rate_limited", "retryAfterSec": 1 }
+              }
+            }
+          }
+        }
+      },
+      "MediaRedirect": {
+        "description": "Redirect to an asset URL. Follow the Location header.",
+        "headers": {
+          "Location": {
+            "description": "Absolute URL to the image asset",
+            "schema": { "type": "string", "format": "uri" },
+            "examples": { "example": { "value": "https://ASSET_HOST/categories/de.svg" } }
+          }
+        },
+        "content": {
+          "text/plain": {
+            "schema": { "type": "string" },
+            "examples": { "redirect_body": { "value": "" } }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "fixtureIdStringRequired": {
+        "name": "fixtureId",
+        "in": "query",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Single fixture ID (e.g. id1400003160574219)."
+      },
+      "futureIdStringRequired": {
+        "name": "futureId",
+        "in": "query",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Single future ID (e.g. id11000132131631)."
+      },
+      "slugPath": {
+        "name": "slug",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Bookmaker slug (e.g. bet365)."
+      },
+      "categoryPath": {
+        "name": "category",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Category identifier (slug/code), e.g. de, usa, fr."
+      },
+      "tournamentIdPath": {
+        "name": "tournamentId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Tournament identifier."
+      },
+      "participantIdPath": {
+        "name": "participantId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Participant identifier."
+      }
+    },
+    "schemas": {
+      "HTTPValidationError": {
+        "title": "HTTPValidationError",
+        "type": "object",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidationError" }
+          }
+        }
+      },
+      "ValidationError": {
+        "title": "ValidationError",
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "properties": {
+          "loc": {
+            "title": "Location",
+            "type": "array",
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] }
+          },
+          "msg": { "title": "Message", "type": "string" },
+          "type": { "title": "Error Type", "type": "string" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Concrete error format returned by this API (no FastAPI detail wrapper).",
+        "properties": {
+          "error": { "type": "integer", "description": "HTTP status code" },
+          "message": { "type": "string", "description": "Human-readable error message" },
+          "code": { "type": "string", "description": "Machine-readable reason code" },
+          "details": { "description": "Optional extra details (string/object/array depending on the error)." }
+        },
+        "required": ["error", "message"],
+        "additionalProperties": true
+      },
+
+      "Bookmaker": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string" },
+          "bookmakerName": { "type": "string" },
+          "active": { "type": "boolean" },
+          "domain": { "type": ["string", "null"], "format": "uri" },
+          "serverGroup": { "type": ["string", "null"] },
+          "price": { "type": ["integer", "null"] },
+          "websocketPregame": { "type": ["boolean", "null"] },
+          "websocketLive": { "type": ["boolean", "null"] },
+          "playerProps": { "type": ["boolean", "null"] },
+          "maxDelayPregameInSec": { "type": ["number", "null"] },
+          "maxDelayLiveInSec": { "type": ["number", "null"] },
+          "maxDelayPregameMainInSec": { "type": ["number", "null"] },
+          "availableCountries": { "type": ["array", "null"], "items": { "type": "string" } }
+        },
+        "required": ["slug", "bookmakerName", "active"],
+        "additionalProperties": true
+      },
+      "BookmakerList": { "type": "array", "items": { "$ref": "#/components/schemas/Bookmaker" } },
+
+      "Sport": {
+        "type": "object",
+        "properties": {
+          "sportId": { "type": "integer" },
+          "slug": { "type": "string" },
+          "sportName": { "type": "string" }
+        },
+        "required": ["sportId", "slug", "sportName"],
+        "additionalProperties": true
+      },
+      "SportList": { "type": "array", "items": { "$ref": "#/components/schemas/Sport" } },
+
+      "Tournament": {
+        "type": "object",
+        "properties": {
+          "tournamentId": { "type": "integer" },
+          "sportId": { "type": "integer" },
+          "tournamentSlug": { "type": ["string", "null"] },
+          "categorySlug": { "type": ["string", "null"] },
+          "tournamentName": { "type": "string" },
+          "categoryName": { "type": ["string", "null"] }
+        },
+        "required": ["tournamentId", "sportId", "tournamentName"],
+        "additionalProperties": true
+      },
+      "TournamentList": { "type": "array", "items": { "$ref": "#/components/schemas/Tournament" } },
+
+      "Season": {
+        "type": "object",
+        "properties": {
+          "seasonId": { "type": "integer" },
+          "tournamentId": { "type": "integer" },
+          "sportId": { "type": ["integer", "null"] },
+          "seasonSlug": { "type": ["string", "null"] },
+          "seasonName": { "type": "string" }
+        },
+        "required": ["seasonId", "tournamentId", "seasonName"],
+        "additionalProperties": true
+      },
+      "SeasonList": { "type": "array", "items": { "$ref": "#/components/schemas/Season" } },
+
+      "Participant": {
+        "type": "object",
+        "properties": {
+          "participantId": { "type": "integer" },
+          "sportId": { "type": ["integer", "null"] },
+          "name": { "type": ["string", "null"] },
+          "participantShortName": { "type": ["string", "null"] },
+          "participantMediumName": { "type": ["string", "null"] },
+          "participantAbbr": { "type": ["string", "null"] }
+        },
+        "required": ["participantId"],
+        "additionalProperties": true
+      },
+      "ParticipantList": { "type": "array", "items": { "$ref": "#/components/schemas/Participant" } },
+
+      "Player": {
+        "type": "object",
+        "properties": {
+          "playerId": { "type": "integer" },
+          "playerName": { "type": ["string", "null"] }
+        },
+        "required": ["playerId"],
+        "additionalProperties": true
+      },
+      "PlayerList": { "type": "array", "items": { "$ref": "#/components/schemas/Player" } },
+
+      "MarketOutcome": {
+        "type": "object",
+        "properties": {
+          "outcomeId": { "type": "integer" },
+          "outcomeName": { "type": ["string", "null"] }
+        },
+        "required": ["outcomeId"],
+        "additionalProperties": true
+      },
+      "Market": {
+        "type": "object",
+        "properties": {
+          "marketId": { "type": "integer" },
+          "sportId": { "type": ["integer", "null"] },
+          "marketType": { "type": ["string", "null"] },
+          "period": { "type": ["string", "null"] },
+          "marketLength": { "type": ["integer", "null"] },
+          "playerProp": { "type": ["boolean", "null"] },
+          "handicap": { "type": ["number", "null"] },
+          "marketName": { "type": ["string", "null"] },
+          "marketNameShort": { "type": ["string", "null"] },
+          "outcomes": { "type": "array", "items": { "$ref": "#/components/schemas/MarketOutcome" } }
+        },
+        "required": ["marketId"],
+        "additionalProperties": true
+      },
+      "MarketList": { "type": "array", "items": { "$ref": "#/components/schemas/Market" } },
+
+      "Currency": {
+        "type": "object",
+        "properties": {
+          "currency": { "type": "string" },
+          "updatedAt": { "type": "string" },
+          "currencyValue": { "type": "number" }
+        },
+        "required": ["currency", "updatedAt", "currencyValue"],
+        "additionalProperties": true
+      },
+      "CurrencyList": { "type": "array", "items": { "$ref": "#/components/schemas/Currency" } },
+
+      "Venue": {
+        "type": "object",
+        "properties": {
+          "venueId": { "type": "integer" },
+          "venueSlug": { "type": "string" },
+          "venueName": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "venueLocation": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+        },
+        "required": ["venueId", "venueSlug"],
+        "additionalProperties": true
+      },
+
+      "Status": {
+        "type": "object",
+        "properties": {
+          "live": { "type": "boolean" },
+          "statusId": { "type": "integer" },
+          "statusName": { "type": "string" }
+        },
+        "required": ["live", "statusId", "statusName"],
+        "additionalProperties": true
+      },
+      "SportRef": {
+        "type": "object",
+        "properties": {
+          "sportId": { "type": "integer" },
+          "sportName": { "type": "string" }
+        },
+        "required": ["sportId", "sportName"],
+        "additionalProperties": true
+      },
+      "TournamentRef": {
+        "type": "object",
+        "properties": {
+          "tournamentId": { "type": "integer" },
+          "tournamentName": { "type": "string" },
+          "categoryName": { "type": ["string", "null"] }
+        },
+        "required": ["tournamentId", "tournamentName"],
+        "additionalProperties": true
+      },
+      "SeasonRef": {
+        "type": "object",
+        "properties": {
+          "seasonId": { "type": ["integer", "null"] },
+          "seasonName": { "type": ["string", "null"] },
+          "seasonRound": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "VenueRef": {
+        "type": "object",
+        "properties": {
+          "venueId": { "type": ["integer", "null"] },
+          "venueName": { "type": ["string", "null"] },
+          "venueLocation": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "Clock": {
+        "type": "object",
+        "properties": {
+          "currentPeriod": { "type": ["string", "null"] },
+          "currentTime": { "type": ["string", "null"] },
+          "remainingTime": { "type": ["string", "null"] },
+          "remainingTimeInPeriod": { "type": ["string", "null"] },
+          "stopped": { "type": ["boolean", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "ParticipantsRef": {
+        "type": "object",
+        "properties": {
+          "participant1Id": { "type": "integer" },
+          "participant1RotNr": { "type": ["integer", "null"] },
+          "participant1Name": { "type": ["string", "null"] },
+          "participant1ShortName": { "type": ["string", "null"] },
+          "participant1Abbr": { "type": ["string", "null"] },
+          "participant2Id": { "type": "integer" },
+          "participant2RotNr": { "type": ["integer", "null"] },
+          "participant2Name": { "type": ["string", "null"] },
+          "participant2ShortName": { "type": ["string", "null"] },
+          "participant2Abbr": { "type": ["string", "null"] }
+        },
+        "required": ["participant1Id", "participant2Id"],
+        "additionalProperties": true
+      },
+      "ScorePeriod": {
+        "type": "object",
+        "properties": {
+          "period": { "type": "string" },
+          "participant1Score": { "type": "integer" },
+          "participant2Score": { "type": "integer" },
+          "updatedAt": { "type": "string" }
+        },
+        "required": ["period", "participant1Score", "participant2Score", "updatedAt"],
+        "additionalProperties": true
+      },
+      "ExternalProviders": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "BookmakerFixtureMeta": {
+        "type": "object",
+        "properties": {
+          "bookmaker": { "type": "string" },
+          "bookmakerFixtureId": { "type": ["string", "null"] },
+          "fixturePath": { "type": ["string", "null"] },
+          "hasOdds": { "type": "boolean" },
+          "staleOdds": { "type": "boolean" },
+          "staleOddsResponseCode": { "type": ["integer", "null"] },
+          "suspended": { "type": "boolean" },
+          "participantsRotated": { "type": "boolean" },
+          "meta": { "type": ["object", "null"], "additionalProperties": true },
+          "updatedAt": { "type": "string" }
+        },
+        "required": ["bookmaker", "hasOdds", "staleOdds", "suspended", "participantsRotated", "updatedAt"],
+        "additionalProperties": true
+      },
+      "Fixture": {
+        "type": "object",
+        "properties": {
+          "fixtureId": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/Status" },
+          "sport": { "$ref": "#/components/schemas/SportRef" },
+          "tournament": { "$ref": "#/components/schemas/TournamentRef" },
+          "season": { "$ref": "#/components/schemas/SeasonRef" },
+          "venue": { "$ref": "#/components/schemas/VenueRef" },
+          "startTime": { "type": "integer" },
+          "trueStartTime": { "type": ["string", "null"] },
+          "trueEndTime": { "type": ["string", "null"] },
+          "participants": { "$ref": "#/components/schemas/ParticipantsRef" },
+          "scores": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/ScorePeriod" }
+          },
+          "clock": { "anyOf": [{ "$ref": "#/components/schemas/Clock" }, { "type": "null" }] },
+          "expectedPeriods": { "type": ["integer", "null"] },
+          "periodLength": { "type": ["integer", "null"] },
+          "externalProviders": { "$ref": "#/components/schemas/ExternalProviders" },
+          "bookmakers": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/BookmakerFixtureMeta" }
+          }
+        },
+        "required": ["fixtureId", "status", "sport", "tournament", "season", "venue", "startTime", "participants", "scores", "clock", "externalProviders", "bookmakers"],
+        "additionalProperties": true
+      },
+      "FixtureList": { "type": "array", "items": { "$ref": "#/components/schemas/Fixture" } },
+
+      "OddQuote": {
+        "type": "object",
+        "properties": {
+          "bookmaker": { "type": "string" },
+          "outcomeId": { "type": "integer" },
+          "playerId": { "type": "integer" },
+          "price": { "type": "number" },
+          "active": { "type": "boolean" },
+          "marketActive": { "type": ["boolean", "null"] },
+          "mainLine": { "type": ["boolean", "null"] },
+          "marketId": { "type": "integer" },
+          "bookmakerMarketId": { "type": ["string", "null"] },
+          "bookmakerOutcomeId": { "type": ["string", "null"] },
+          "bookmakerChangedAt": { "type": ["int", "null"] },
+          "priceFractional": { "type": ["string", "null"] },
+          "priceAmerican": { "type": ["integer", "null"] },
+          "meta": { "type": ["json", "null"] },
+          "limit": { "type": ["number", "null"] },
+          "betslip": { "type": ["string", "null"] },
+          "changedAt": { "type": "int" }
+        },
+        "required": ["bookmaker", "outcomeId", "playerId", "price", "active", "changedAt"],
+        "additionalProperties": true
+      },
+      "OddsMap": { "type": "object", "additionalProperties": { "$ref": "#/components/schemas/OddQuote" } },
+      "OddsByBookmaker": { "type": "object", "additionalProperties": { "$ref": "#/components/schemas/OddsMap" } },
+
+      "FixtureOddsResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Fixture" },
+          {
+            "type": "object",
+            "properties": {
+              "odds": { "$ref": "#/components/schemas/OddsByBookmaker" }
+            },
+            "required": ["odds"],
+            "additionalProperties": true
+          }
+        ]
+      },
+
+      "PricePoint": {
+        "type": "object",
+        "properties": {
+          "bookmaker": { "type": "string" },
+          "outcomeId": { "type": "integer" },
+          "playerId": { "type": "integer" },
+          "price": { "type": "number" },
+          "active": { "type": "boolean" },
+          "marketActive": { "type": ["boolean", "null"] },
+          "mainLine": { "type": ["boolean", "null"] },
+          "marketId": { "type": "integer" },
+          "bookmakerMarketId": { "type": ["string", "null"] },
+          "bookmakerOutcomeId": { "type": ["string", "null"] },
+          "bookmakerChangedAt": { "type": ["int", "null"] },
+          "priceFractional": { "type": ["string", "null"] },
+          "priceAmerican": { "type": ["integer", "null"] },
+          "meta": { "type": ["json", "null"] },
+          "limit": { "type": ["number", "null"] },
+          "betslip": { "type": ["string", "null"] },
+          "changedAt": { "type": "int" }
+        },
+        "required": ["bookmaker", "outcomeId", "playerId", "price", "active", "changedAt"],
+        "additionalProperties": true
+      },
+      "ClvPair": {
+        "type": "object",
+        "properties": {
+          "olv": { "$ref": "#/components/schemas/PricePoint" },
+          "clv": { "$ref": "#/components/schemas/PricePoint" }
+        },
+        "required": ["olv", "clv"],
+        "additionalProperties": true
+      },
+      "ClvOddsByBookmaker": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/components/schemas/ClvPair" }
+        }
+      },
+      "FixtureClvResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Fixture" },
+          {
+            "type": "object",
+            "properties": { "odds": { "$ref": "#/components/schemas/ClvOddsByBookmaker" } },
+            "required": ["odds"],
+            "additionalProperties": true
+          }
+        ]
+      },
+
+      "HistoricalOddsByBookmaker": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/OddQuote" }
+          }
+        }
+      },
+      "FixtureHistoricalOddsResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Fixture" },
+          {
+            "type": "object",
+            "properties": { "odds": { "$ref": "#/components/schemas/HistoricalOddsByBookmaker" } },
+            "required": ["odds"],
+            "additionalProperties": true
+          }
+        ]
+      },
+
+      "FixtureMapping": {
+        "type": "object",
+        "properties": {
+          "bookmaker": { "type": "string" },
+          "fixtureId": { "type": "string" },
+          "bookmakerFixtureId": { "type": "string" },
+          "participantsRotated": { "type": "boolean" }
+        },
+        "required": ["bookmaker", "fixtureId", "bookmakerFixtureId", "participantsRotated"],
+        "additionalProperties": true
+      },
+      "FixtureMappingList": { "type": "array", "items": { "$ref": "#/components/schemas/FixtureMapping" } },
+
+      "SettlementItem": {
+        "type": "object",
+        "properties": {
+          "marketId": { "type": ["integer", "null"] },
+          "marketType": { "type": ["string", "null"] },
+          "outcomeId": { "type": ["integer", "null"] },
+          "playerId": { "type": ["integer", "null"] },
+          "status": { "type": ["string", "null"] },
+          "margin": { "type": ["number", "null"] },
+          "team1Score": { "type": ["integer", "null"] },
+          "team2Score": { "type": ["integer", "null"] },
+          "periods": { "type": ["array", "null"], "items": { "type": "string" } },
+          "reason": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "FixtureSettlementResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Fixture" },
+          {
+            "type": "object",
+            "properties": {
+              "settlements": { "type": "array", "items": { "$ref": "#/components/schemas/SettlementItem" } }
+            },
+            "required": ["settlements"],
+            "additionalProperties": true
+          }
+        ]
+      },
+
+      "FutureMarketRef": {
+        "type": "object",
+        "properties": {
+          "marketId": { "type": ["integer", "null"] },
+          "marketName": { "type": ["string", "null"] },
+          "marketType": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "BookmakerFutureMeta": {
+        "type": "object",
+        "properties": {
+          "bookmaker": { "type": "string" },
+          "bookmakerFutureId": { "type": ["string", "null"] },
+          "participantsRotated": { "type": "boolean" }
+        },
+        "required": ["bookmaker", "participantsRotated"],
+        "additionalProperties": true
+      },
+      "FutureMeta": {
+        "type": "object",
+        "properties": {
+          "futureId": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/Status" },
+          "sport": { "$ref": "#/components/schemas/SportRef" },
+          "tournament": { "$ref": "#/components/schemas/TournamentRef" },
+          "season": { "$ref": "#/components/schemas/SeasonRef" },
+          "startTime": { "type": "integer" },
+          "endTime": { "type": "integer" },
+          "market": { "$ref": "#/components/schemas/FutureMarketRef" },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "participantId": { "type": "integer" },
+                "participantName": { "type": ["string", "null"] }
+              },
+              "required": ["participantId"],
+              "additionalProperties": true
+            },
+            "description": "List of participants (teams/players) competing in this futures market."
+          },
+          "externalProviders": { "$ref": "#/components/schemas/ExternalProviders" },
+          "bookmakers": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/BookmakerFutureMeta" }
+          }
+        },
+        "required": ["futureId", "status", "sport", "tournament", "season", "startTime", "endTime", "market", "participants", "externalProviders", "bookmakers"],
+        "additionalProperties": true
+      },
+      "FutureMetaList": { "type": "array", "items": { "$ref": "#/components/schemas/FutureMeta" } },
+
+      "FutureOddsRow": {
+        "type": "object",
+        "description": "A single futures odds entry. The key for futures odds is futureId:bookmaker:participantId.",
+        "properties": {
+          "oddsId": { "type": "string" },
+          "bookmaker": { "type": "string" },
+          "participantId": { "type": ["integer", "null"] },
+          "price": { "type": "number" },
+          "active": { "type": "boolean" },
+          "bookmakerOutcomeId": { "type": ["string", "null"] },
+          "bookmakerChangedAt": { "type": ["int", "null"] },
+          "priceFractional": { "type": ["string", "null"] },
+          "priceAmerican": { "type": ["integer", "null"] },
+          "meta": { "type": ["json", "null"] },
+          "limit": { "type": ["number", "null"] },
+          "betslip": { "type": ["string", "null"] },
+          "changedAt": { "type": "int" }
+        },
+        "required": ["oddsId", "bookmaker"],
+        "additionalProperties": true
+      },
+      "FutureBookmakerOdds": {
+        "type": "object",
+        "properties": {
+          "odds": { "type": "array", "items": { "$ref": "#/components/schemas/FutureOddsRow" } }
+        },
+        "required": ["odds"],
+        "additionalProperties": true
+      },
+      "FutureOddsResponse": {
+        "type": "object",
+        "properties": {
+          "futureId": { "type": "string" },
+          "bookmakers": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/components/schemas/FutureBookmakerOdds" }
+          },
+          "futureMeta": { "$ref": "#/components/schemas/FutureMeta" }
+        },
+        "required": ["futureId", "bookmakers"],
+        "additionalProperties": true
+      },
+
+      "FutureOddsClvResponse": { "type": "object", "additionalProperties": true },
+      "FutureOddsHistoricalResponse": { "type": "object", "additionalProperties": true },
+
+      "FutureMapping": {
+        "type": "object",
+        "properties": {
+          "bookmaker": { "type": "string" },
+          "futureId": { "type": ["string", "null"] },
+          "bookmakerFutureId": { "type": ["string", "null"] },
+          "participantsRotated": { "type": "boolean" }
+        },
+        "required": ["bookmaker", "participantsRotated"],
+        "additionalProperties": true
+      },
+      "FutureMappingList": { "type": "array", "items": { "$ref": "#/components/schemas/FutureMapping" } }
+    }
+  }
+}
+

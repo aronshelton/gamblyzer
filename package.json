@@ -1,0 +1,22 @@
+{
+  "name": "gamblyzer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gamblyzer web app (Next.js) + existing CLI scripts",
+  "engines": {
+    "node": ">=18.18.0 <23"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "styled-jsx": "^5.1.7"
+  }
+}
+
