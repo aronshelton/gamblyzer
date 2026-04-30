@@ -26,9 +26,6 @@ export default function RootLayout({ children }) {
                 <div className="subtitle">DraftKings + Polymarket (via The Odds API)</div>
               </div>
             </div>
-            <a className="chip" href="https://vercel.com" target="_blank" rel="noreferrer">
-              Deploy on Vercel
-            </a>
           </header>
           <main className="main">{children}</main>
           <footer className="footer">
