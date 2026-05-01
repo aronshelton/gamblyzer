@@ -23,10 +23,16 @@ export async function POST(req) {
     const leagues = body?.leagues;
     const min = body?.min;
     const max = body?.max;
+    const pickIndex = body?.pickIndex;
+    const restrictPoolIndices = body?.restrictPoolIndices;
+    const count = body?.count;
 
     const leaguesLog = Array.isArray(leagues) && leagues.length ? leagues.join("+") : String(league || "NBA");
     console.log(`[gamblyzer] req=${reqId} start leagues=${leaguesLog} min=${min} max=${max}`);
-    const result = await withTimeout(generatePick({ league, leagues, min, max }), FULL_GENERATE_MS);
+    const result = await withTimeout(
+      generatePick({ league, leagues, min, max, pickIndex, restrictPoolIndices, count }),
+      FULL_GENERATE_MS
+    );
     console.log(`[gamblyzer] req=${reqId} ok pool=${result?.poolSize ?? "?"}`);
     return Response.json(result, { status: 200 });
   } catch (e) {

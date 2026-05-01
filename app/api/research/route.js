@@ -1,4 +1,4 @@
-import { generateResearchNarrative } from "../../../lib/gamblyzer5-web";
+import { generateCounterResearchNarrative, generateResearchNarrative } from "../../../lib/gamblyzer5-web";
 
 export const runtime = "nodejs";
 
@@ -20,10 +20,12 @@ export async function POST(req) {
   try {
     const body = await req.json().catch(() => ({}));
     const pick = body?.pick;
+    const counter = Boolean(body?.counter);
     if (!pick) throw new Error("Missing pick");
 
-    console.log(`[gamblyzer] req=${reqId} research start`);
-    const result = await withTimeout(generateResearchNarrative(pick), RESEARCH_MS);
+    console.log(`[gamblyzer] req=${reqId} research start counter=${counter ? "1" : "0"}`);
+    const runner = counter ? generateCounterResearchNarrative(pick) : generateResearchNarrative(pick);
+    const result = await withTimeout(runner, RESEARCH_MS);
     console.log(`[gamblyzer] req=${reqId} research ok`);
     return Response.json(result, { status: 200 });
   } catch (e) {

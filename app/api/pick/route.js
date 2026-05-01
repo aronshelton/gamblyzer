@@ -1,4 +1,4 @@
-import { generatePickOnly } from "../../../lib/gamblyzer5-web";
+import { generatePicks } from "../../../lib/gamblyzer5-web";
 
 export const runtime = "nodejs";
 
@@ -18,11 +18,23 @@ export async function POST(req) {
     const leagues = body?.leagues;
     const min = body?.min;
     const max = body?.max;
+    const pickIndex = body?.pickIndex;
+    const restrictPoolIndices = body?.restrictPoolIndices;
+    const count = body?.count;
 
     const leaguesLog = Array.isArray(leagues) && leagues.length ? leagues.join("+") : String(league || "NBA");
-    console.log(`[gamblyzer] req=${reqId} pick start leagues=${leaguesLog} min=${min} max=${max}`);
-    const result = await withTimeout(generatePickOnly({ league, leagues, min, max }), 30000);
-    console.log(`[gamblyzer] req=${reqId} pick ok pool=${result?.poolSize ?? "?"}`);
+    const idxLog = pickIndex === undefined || pickIndex === null ? "random" : String(pickIndex);
+    const rLen = Array.isArray(restrictPoolIndices) ? restrictPoolIndices.length : 0;
+    console.log(
+      `[gamblyzer] req=${reqId} pick start leagues=${leaguesLog} min=${min} max=${max} idx=${idxLog} restrictN=${rLen} count=${count ?? 1}`
+    );
+    const result = await withTimeout(
+      generatePicks({ league, leagues, min, max, pickIndex, restrictPoolIndices, count }),
+      30000
+    );
+    console.log(
+      `[gamblyzer] req=${reqId} pick ok pool=${result?.poolSize ?? "?"} batch=${result?.pickBatchReturned ?? "?"}/${result?.pickBatchRequested ?? "?"}`
+    );
     return Response.json(result, { status: 200 });
   } catch (e) {
     console.error(`[gamblyzer] req=${reqId} pick error`, e);

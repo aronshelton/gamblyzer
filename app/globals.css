@@ -193,6 +193,368 @@ select:focus, input:focus { border-color: rgba(112,185,255,0.55); }
 .btn:hover { border-color: rgba(112,185,255,0.6); }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.btnRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (min-width: 480px) {
+  .btnRow {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .btnRow > .btn,
+  .btnRow > .btnSecondary {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.btnSecondary {
+  width: 100%;
+  flex: 1;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  padding: 12px 14px;
+  min-height: 48px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (min-width: 640px) {
+  .btnSecondary { font-size: 15px; }
+}
+.btnSecondary:hover:not(:disabled) {
+  border-color: rgba(255,255,255,0.32);
+  background: rgba(255,255,255,0.09);
+}
+.btnSecondary:active:not(:disabled) { opacity: 0.95; }
+.btnSecondary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.poolPanel {
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(5, 8, 18, 0.35);
+  overflow: hidden;
+}
+
+.poolScroll {
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.poolRow {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+}
+.poolRow:last-child { border-bottom: none; }
+
+.poolIdx { padding-top: 6px; color: var(--muted); }
+
+.poolRowMain { min-width: 0; }
+
+.poolRowTitle {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.poolRowLine {
+  margin-top: 4px;
+  color: rgba(255,255,255,0.88);
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.poolRowMeta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.btnUseLine {
+  margin-top: 2px;
+  padding: 8px 10px;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(112,185,255,0.45);
+  background: rgba(112,185,255,0.12);
+  color: var(--text);
+  font-weight: 750;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: start;
+  -webkit-tap-highlight-color: transparent;
+}
+.btnUseLine:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.poolRowMyPool {
+  background: rgba(112,185,255,0.065);
+}
+
+.poolRowActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  margin-top: 2px;
+  min-width: 92px;
+}
+
+.btnPoolToggle {
+  padding: 8px 10px;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+  font-weight: 750;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btnPoolToggle:hover:not(:disabled) {
+  border-color: rgba(255,255,255,0.28);
+}
+.btnPoolToggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnPoolToggleOn {
+  border-color: rgba(112,185,255,0.55);
+  background: rgba(112,185,255,0.14);
+  color: var(--text);
+}
+
+.poolBar {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.poolBar strong {
+  color: rgba(255,255,255,0.92);
+  font-weight: 700;
+}
+
+.btnClearPool {
+  border: none;
+  background: transparent;
+  color: rgba(232,148,148,0.95);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.pickCountField label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 650;
+}
+
+.selectInput {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(5, 8, 18, 0.55);
+  color: var(--text);
+  font-size: 16px;
+  padding: 0 12px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+@media (min-width: 640px) {
+  .selectInput { font-size: 15px; }
+}
+
+.pickPackStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.pickBlock {
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  background: rgba(5, 8, 18, 0.32);
+}
+
+.pickBlockTitle {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.pickBlockTitleMuted {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pickBlockKvs.kvs {
+  margin-top: 0;
+}
+
+.judgeActionRow {
+  margin: 14px 0 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.judgeActionHint {
+  flex: 1 1 200px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pickBlockChosen {
+  border-color: rgba(255, 200, 120, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 200, 120, 0.12);
+  background: rgba(255, 200, 120, 0.06);
+}
+
+.pickBlockPassLean {
+  border-color: rgba(255, 140, 140, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 140, 140, 0.1);
+  background: rgba(255, 100, 100, 0.05);
+}
+
+.pickBlockSplitLean {
+  border-color: rgba(200, 200, 210, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.judgeVerdictPanel {
+  margin-top: 16px;
+  border-color: rgba(180, 140, 255, 0.35);
+}
+
+.judgeVerdictPanel .pickBlockTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.judgeVerdictBadge {
+  font-size: 11px;
+  font-weight: 650;
+  color: rgba(200, 180, 255, 0.95);
+  border: 1px solid rgba(180, 140, 255, 0.45);
+  background: rgba(140, 100, 255, 0.12);
+  border-radius: 999px;
+  padding: 4px 10px;
+  vertical-align: middle;
+}
+
+.judgeContextLabel {
+  display: block;
+  font-weight: 700;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.judgeContextTextarea {
+  width: 100%;
+  min-height: 100px;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(5, 8, 18, 0.55);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  resize: vertical;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.judgeContextTextarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.judgeContextTextarea:disabled {
+  opacity: 0.55;
+}
+
+.judgeContextActions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.judgeOneLine {
+  margin-top: 10px;
+  font-weight: 650;
+  color: rgba(255,255,255,0.92);
+}
+
+.linkLikeBtn {
+  display: block;
+  margin-top: 6px;
+  width: 100%;
+  text-align: center;
+  border: none;
+  background: transparent;
+  color: rgba(160,205,255,0.95);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 8px 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 420px) {
+  .poolRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .poolIdx { padding-top: 0; }
+  .poolRowActions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+  }
+  .btnUseLine,
+  .btnPoolToggle {
+    flex: 1;
+    min-width: 108px;
+  }
+}
+
 .toggleRow {
   display: flex;
   flex-wrap: wrap;
