@@ -7,7 +7,9 @@
     "node": ">=18.18.0 <23"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev",
+    "clean": "rm -rf .next node_modules/.cache",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

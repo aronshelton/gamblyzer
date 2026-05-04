@@ -442,6 +442,12 @@ select:focus, input:focus { border-color: rgba(112,185,255,0.55); }
   background: rgba(255, 200, 120, 0.06);
 }
 
+.pickBlockCounterFavored {
+  border-color: rgba(180, 220, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(120, 190, 255, 0.18);
+  background: rgba(80, 140, 220, 0.09);
+}
+
 .pickBlockPassLean {
   border-color: rgba(255, 140, 140, 0.45);
   box-shadow: 0 0 0 1px rgba(255, 140, 140, 0.1);
@@ -513,6 +519,161 @@ select:focus, input:focus { border-color: rgba(112,185,255,0.55); }
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.researchActionRow,
+.researchGapBtnRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.researchCtxLabel {
+  display: block;
+  font-weight: 650;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.researchCtxTextarea {
+  width: 100%;
+  min-height: 76px;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(5, 8, 18, 0.55);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.researchCtxTextarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.researchCtxTextarea:disabled {
+  opacity: 0.55;
+}
+
+.judgeRankList li {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.judgeDock {
+  border-color: rgba(112, 185, 255, 0.22);
+}
+@media (min-width: 940px) {
+  .judgeDock {
+    grid-column: 1 / -1;
+  }
+}
+.judgeDockIntro {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 14px;
+  max-width: 720px;
+}
+
+.sourcesAccordion {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.sourcesAccordionSummary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(200, 220, 255, 0.95);
+  user-select: none;
+}
+.sourcesAccordionSummary::-webkit-details-marker {
+  display: none;
+}
+.sourcesAccordionSummary::after {
+  content: "▸";
+  float: right;
+  opacity: 0.55;
+  font-size: 12px;
+}
+.sourcesAccordion[open] .sourcesAccordionSummary::after {
+  content: "▾";
+}
+.sourcesAccordionBody {
+  padding: 0 14px 12px;
+  max-height: min(50vh, 420px);
+  overflow: auto;
+}
+
+.ctxDisclosure {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(5, 8, 18, 0.45);
+}
+.ctxDisclosureSummary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  user-select: none;
+}
+.ctxDisclosureSummary::-webkit-details-marker {
+  display: none;
+}
+.ctxDisclosureSummary::after {
+  content: "▸";
+  float: right;
+  opacity: 0.5;
+  font-size: 12px;
+}
+.ctxDisclosure[open] .ctxDisclosureSummary::after {
+  content: "▾";
+}
+.ctxDisclosureBody {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ctxDisclosureHint {
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+.ctxDisclosureBody .btn,
+.ctxDisclosureBody .btnSecondary {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.researchBlockLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+.dossierNarrative {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.judgeNotesDisclosure .judgeContextTextarea {
+  margin-top: 0;
 }
 
 .judgeOneLine {

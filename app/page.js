@@ -16,6 +16,17 @@ function splitNarrativeAndSources(combined) {
   return { narrative: parts[0].trim(), sources: parts.slice(1).join("\n<<<GAMBLYZER_SOURCES>>>\n").trim() };
 }
 
+function SourcesAccordion({ id, title, sources }) {
+  const t = String(sources || "").trim();
+  if (!t) return null;
+  return (
+    <details className="sourcesAccordion" id={id}>
+      <summary className="sourcesAccordionSummary">{title}</summary>
+      <div className="pre sourcesAccordionBody">{t}</div>
+    </details>
+  );
+}
+
 function pickHasResearchForJudge(p) {
   const nc = String(p?.narrativeCombined || "").trim();
   return nc.length >= 80 && nc.includes("<<<GAMBLYZER_SOURCES>>>");
@@ -60,6 +71,12 @@ export default function Page() {
   const [picking, setPicking] = useState(false);
   /** Busy slot — primary vs counter dossier builds share the same Odds/league UX lock. */
   const [researchBusy, setResearchBusy] = useState(null);
+  /** Per-slot optional text: sent only with “Run research with context”. */
+  const [primaryResearchContextBySlot, setPrimaryResearchContextBySlot] = useState({});
+  const [counterResearchContextBySlot, setCounterResearchContextBySlot] = useState({});
+  /** Per-slot gap notes for primary vs counter refine panels (kept separate). */
+  const [gapPrimaryBySlot, setGapPrimaryBySlot] = useState({});
+  const [gapCounterBySlot, setGapCounterBySlot] = useState({});
   const [judging, setJudging] = useState(false);
   const [judgeVerdict, setJudgeVerdict] = useState(null);
   const [judgeUserContextDraft, setJudgeUserContextDraft] = useState("");
@@ -96,6 +113,10 @@ export default function Page() {
   useEffect(() => {
     setJudgeVerdict(null);
     setJudgeUserContextDraft("");
+    setPrimaryResearchContextBySlot({});
+    setCounterResearchContextBySlot({});
+    setGapPrimaryBySlot({});
+    setGapCounterBySlot({});
   }, [pickBundle?.batchId]);
 
   pickBundleRef.current = pickBundle;
@@ -247,20 +268,57 @@ export default function Page() {
     }
   }
 
+  function primaryCtxFor(slotIdx) {
+    return String(primaryResearchContextBySlot[slotIdx] ?? "").trim();
+  }
+  function counterCtxFor(slotIdx) {
+    return String(counterResearchContextBySlot[slotIdx] ?? "").trim();
+  }
   async function runResearch(slotIdx, opts = {}) {
-    const { counter = false } = opts;
+    const { counter = false, refine = false } = opts;
     if (!pickBundle?.picks?.[slotIdx]) return;
     const batchSnapshot = pickBundle.batchId;
     const pickPayload = pickBundle.picks[slotIdx];
+    const ctx = counter ? counterCtxFor(slotIdx) : primaryCtxFor(slotIdx);
+    const gap = counter
+      ? String(gapCounterBySlot[slotIdx] ?? "").trim()
+      : String(gapPrimaryBySlot[slotIdx] ?? "").trim();
+
+    if (!refine) {
+      if (counter) {
+        if (!pickHasResearchForJudge(pickPayload)) {
+          setErr("Run Mahowny research on this pick before generating a counter dossier.");
+          return;
+        }
+        if (pickPayload.counterNarrativeCombined) {
+          setErr('Open “Update with your notes” to change the counter dossier — plain re-runs are disabled.');
+          return;
+        }
+      } else if (pickPayload.narrativeCombined) {
+        setErr('Open “Update with your notes” to change primary research — plain re-runs are disabled.');
+        return;
+      }
+    } else {
+      if (!ctx && !gap) {
+        setErr("Add search directions and/or gap notes (at least one) before re-running with your input.");
+        return;
+      }
+    }
+
     setErr("");
     setResearchBusy({ slotIdx, counter: Boolean(counter) });
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), RESEARCH_FETCH_TIMEOUT_MS);
+      const body = { pick: pickPayload, counter: Boolean(counter) };
+      if (refine) {
+        if (ctx) body.userContext = ctx;
+        if (gap) body.gapClosure = gap;
+      }
       const res = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pick: pickPayload, counter: Boolean(counter) }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       }).finally(() => clearTimeout(timeoutId));
       const data = await res.json().catch(() => ({}));
@@ -465,7 +523,7 @@ export default function Page() {
                       className={`poolRow ${inPool ? "poolRowMyPool" : ""}`}
                       key={`${p.index}-${p?.fixture?.fixtureId || ""}-${p?.comparisonKey || ""}`}
                     >
-                      <div className="mono poolIdx">#{p.index}</div>
+                      <div className="mono poolIdx">#{p.index + 1}</div>
                       <div className="poolRowMain">
                         <div className="poolRowTitle">
                           {away} @ {home}
@@ -523,7 +581,7 @@ export default function Page() {
         <h2>Mahowny’s pick{pickBundle?.picks?.length > 1 ? "s" : ""}</h2>
         {!pickBundle?.picks?.length ? (
           <div className="muted">
-            Generate one or more picks first (fast, one Odds fetch). Then use <strong>Generate research</strong> on each line when you want the slow AI pass (web search + narrative).
+            Generate one or more picks first (fast, one Odds fetch). Then run <strong>Mahowny research</strong> on each line for the slow AI pass (web search + narrative).
           </div>
         ) : (
           <>
@@ -540,40 +598,23 @@ export default function Page() {
                       <span className="mono">{pickBundle.poolSize}</span>).
                     </>
                   )}{" "}
-                  Use <strong>Generate research</strong> on each pick below when you want the slow AI pass (typically one to a few minutes each).
+                  Run <strong>Mahowny research</strong> on each pick below when you want the slow AI pass (typically one to a few minutes each).
                 </span>
               </div>
             ) : null}
             {!judgeGate && pickBundle?.picks?.length ? (
               <div className="pill pillBlock">
                 <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
-                  <strong>Claude judge</strong>:{" "}
+                  <strong>Claude judge</strong> appears at the bottom when every pick has the required dossiers —{" "}
                   {pickBundle.picks.length >= 2 ? (
                     <>
-                      run primary <strong>Generate research</strong> on each pick below. Optionally add{" "}
-                      <strong>Generate counter dossier</strong> per pick so Claude can weigh pro vs con inside each ticket and across picks.
+                      primary research on each line; counter is optional but strengthens comparison.
                     </>
                   ) : (
                     <>
-                      after primary research completes, generate a <strong>counter dossier</strong> — both must exist before the judge can weigh this single ticket pro vs contra.
+                      primary research plus a counter dossier on this ticket.
                     </>
                   )}
-                </span>
-              </div>
-            ) : null}
-            {judgeGate ? (
-              <div className="judgeActionRow">
-                <button
-                  type="button"
-                  className="btnSecondary"
-                  disabled={picking || researchBusy !== null || judging}
-                  onClick={() => runJudge(false)}
-                >
-                  {judging ? "Judging with Claude…" : judgeEligibleMulti ? "Judge picks (Claude)" : "Judge ticket vs counter (Claude)"}
-                </button>
-                <span className="muted judgeActionHint">
-                  Claude reads only dossiers already on this screen (optional counter dossiers weigh against each ticket too). Comparative epistemics —
-                  not a lock or game prediction.
                 </span>
               </div>
             ) : null}
@@ -595,11 +636,13 @@ export default function Page() {
                 const articleClass =
                   multiChosen || singleStance === "take"
                     ? "pickBlock pickBlockChosen"
-                    : singleStance === "pass"
-                      ? "pickBlock pickBlockPassLean"
-                      : singleStance === "split"
-                        ? "pickBlock pickBlockSplitLean"
-                        : "pickBlock";
+                    : singleStance === "counter"
+                      ? "pickBlock pickBlockCounterFavored"
+                      : singleStance === "pass"
+                        ? "pickBlock pickBlockPassLean"
+                        : singleStance === "split"
+                          ? "pickBlock pickBlockSplitLean"
+                          : "pickBlock";
                 return (
                   <article
                     className={articleClass}
@@ -607,7 +650,10 @@ export default function Page() {
                   >
                     <h3 className="pickBlockTitle">
                       Pick #{slotIdx + 1}
-                      <span className="pickBlockTitleMuted mono"> · line #{typeof row.pickIndex === "number" ? row.pickIndex : "—"} · {gameLabel}</span>
+                      <span className="pickBlockTitleMuted mono">
+                        {" "}
+                        · line #{typeof row.pickIndex === "number" ? row.pickIndex + 1 : "—"} · {gameLabel}
+                      </span>
                     </h3>
                     <div className="kvs pickBlockKvs">
                       <div className="k">League</div>
@@ -625,67 +671,155 @@ export default function Page() {
                         {row?.userPoolRestricted ? `Your pool (${row?.userPoolSize ?? "—"} lines)` : "Full eligible pool"}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={picking || researchBusy !== null || judging}
-                      onClick={() => runResearch(slotIdx)}
-                      style={{ marginTop: 10 }}
-                    >
-                      {busyPrimary ? "Researching…" : row?.narrativeCombined ? "Regenerate research" : "Generate research"}
-                    </button>
-                    {busyPrimary ? (
-                      <div className="researchProgressWrap" style={{ marginTop: 10 }}>
-                        <div
-                          className="researchProgress"
-                          role="progressbar"
-                          aria-busy="true"
-                          aria-valuetext="Mahowny research in progress"
+                    <div className="researchBlock" style={{ marginTop: 12 }}>
+                      <div className="muted researchBlockLabel">Mahowny research</div>
+                      {!row?.narrativeCombined ? (
+                        <button
+                          type="button"
+                          className="btn"
+                          disabled={picking || researchBusy !== null || judging}
+                          onClick={() => runResearch(slotIdx, { refine: false })}
                         >
-                          <div className="researchProgressIndeterminate" aria-hidden />
+                          {busyPrimary ? "Researching…" : "Run Mahowny research"}
+                        </button>
+                      ) : null}
+                      {row?.narrativeCombined ? (
+                        <details className="ctxDisclosure">
+                          <summary className="ctxDisclosureSummary">Update research with your notes</summary>
+                          <div className="ctxDisclosureBody">
+                            <p className="muted ctxDisclosureHint">
+                              Re-runs only happen when you add input. Use search directions, gap notes you verified, or both.
+                            </p>
+                            <label className="researchCtxLabel" htmlFor={`primaryCtx-${slotIdx}`}>
+                              Search directions
+                            </label>
+                            <textarea
+                              id={`primaryCtx-${slotIdx}`}
+                              className="researchCtxTextarea"
+                              rows={3}
+                              value={primaryResearchContextBySlot[slotIdx] ?? ""}
+                              onChange={(e) =>
+                                setPrimaryResearchContextBySlot((prev) => ({ ...prev, [slotIdx]: e.target.value }))
+                              }
+                              disabled={picking || researchBusy !== null || judging}
+                              placeholder="Sources, stats, or angles to prioritize…"
+                              spellCheck
+                            />
+                            <label className="researchCtxLabel" htmlFor={`gapPrimary-${slotIdx}`}>
+                              Gap notes
+                            </label>
+                            <textarea
+                              id={`gapPrimary-${slotIdx}`}
+                              className="researchCtxTextarea"
+                              rows={3}
+                              value={gapPrimaryBySlot[slotIdx] ?? ""}
+                              onChange={(e) => setGapPrimaryBySlot((prev) => ({ ...prev, [slotIdx]: e.target.value }))}
+                              disabled={picking || researchBusy !== null || judging}
+                              placeholder="Facts you found yourself (e.g. confirmed starter)…"
+                              spellCheck
+                            />
+                            <button
+                              type="button"
+                              className="btn"
+                              disabled={picking || researchBusy !== null || judging}
+                              onClick={() => runResearch(slotIdx, { refine: true })}
+                            >
+                              {busyPrimary ? "Researching…" : "Re-run research with notes"}
+                            </button>
+                          </div>
+                        </details>
+                      ) : null}
+                      {busyPrimary ? (
+                        <div className="researchProgressWrap" style={{ marginTop: 10 }}>
+                          <div
+                            className="researchProgress"
+                            role="progressbar"
+                            aria-busy="true"
+                            aria-valuetext="Mahowny research in progress"
+                          >
+                            <div className="researchProgressIndeterminate" aria-hidden />
+                          </div>
+                          <p className="muted researchProgressHint">
+                            Usually about one to a few minutes (web search + narrative).
+                          </p>
                         </div>
-                        <p className="muted researchProgressHint">
-                          Indeterminate progress — AI search plus narrative usually takes about one to a few minutes.
-                        </p>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
                     <div className="hr" />
-                    <div className="pre">{row?.narrativeCombined ? (narrBody || "(No narrative returned.)") : "Run research above for this pick when you’re ready."}</div>
-                    {narrSources ? (
-                      <>
-                        <div className="hr" />
-                        <div className="muted" style={{ marginBottom: 6 }}>
-                          Research sources (verify before relying on)
-                        </div>
-                        <div className="pre">{narrSources}</div>
-                      </>
-                    ) : null}
+                    <div className="pre dossierNarrative">
+                      {row?.narrativeCombined ? (narrBody || "(No narrative returned.)") : "Run Mahowny research when you’re ready."}
+                    </div>
+                    <SourcesAccordion
+                      id={`src-primary-${slotIdx}`}
+                      title="Primary citations & FACT lines"
+                      sources={narrSources}
+                    />
                     <div className="hr" />
-                    <div className="muted" style={{ marginBottom: 8, fontWeight: 650, fontSize: 13 }}>
+                    <div className="muted researchBlockLabel" style={{ marginBottom: 8 }}>
                       Counter dossier (vs this ticket)
                     </div>
-                    <button
-                      type="button"
-                      className="btnSecondary"
-                      disabled={
-                        picking || researchBusy !== null || judging || !pickHasResearchForJudge(row)
-                      }
-                      onClick={() => runResearch(slotIdx, { counter: true })}
-                      style={{ marginBottom: busyCounter ? 8 : 10 }}
-                    >
-                      {busyCounter
-                        ? "Counter research…"
-                        : row?.counterNarrativeCombined
-                          ? "Regenerate counter dossier"
-                          : "Generate counter dossier"}
-                    </button>
                     {!pickHasResearchForJudge(row) ? (
                       <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                        Run Mahowny’s research first — the counter pass targets this same DK line skeptically.
+                        Run Mahowny research on this line first.
                       </p>
+                    ) : !row?.counterNarrativeCombined ? (
+                      <button
+                        type="button"
+                        className="btnSecondary"
+                        disabled={picking || researchBusy !== null || judging}
+                        onClick={() => runResearch(slotIdx, { counter: true, refine: false })}
+                      >
+                        {busyCounter ? "Counter research…" : "Run counter dossier"}
+                      </button>
+                    ) : null}
+                    {pickHasResearchForJudge(row) && row?.counterNarrativeCombined ? (
+                      <details className="ctxDisclosure">
+                        <summary className="ctxDisclosureSummary">Update counter dossier with your notes</summary>
+                        <div className="ctxDisclosureBody">
+                          <p className="muted ctxDisclosureHint">
+                            Same as primary: add directions and/or gap notes, then re-run.
+                          </p>
+                          <label className="researchCtxLabel" htmlFor={`counterCtx-${slotIdx}`}>
+                            Search directions (counter)
+                          </label>
+                          <textarea
+                            id={`counterCtx-${slotIdx}`}
+                            className="researchCtxTextarea"
+                            rows={3}
+                            value={counterResearchContextBySlot[slotIdx] ?? ""}
+                            onChange={(e) =>
+                              setCounterResearchContextBySlot((prev) => ({ ...prev, [slotIdx]: e.target.value }))
+                            }
+                            disabled={picking || researchBusy !== null || judging}
+                            placeholder="Fade angles, sources, or stats to emphasize…"
+                            spellCheck
+                          />
+                          <label className="researchCtxLabel" htmlFor={`gapCounter-${slotIdx}`}>
+                            Gap notes (counter)
+                          </label>
+                          <textarea
+                            id={`gapCounter-${slotIdx}`}
+                            className="researchCtxTextarea"
+                            rows={3}
+                            value={gapCounterBySlot[slotIdx] ?? ""}
+                            onChange={(e) => setGapCounterBySlot((prev) => ({ ...prev, [slotIdx]: e.target.value }))}
+                            disabled={picking || researchBusy !== null || judging}
+                            placeholder="Optional facts for the skeptic case…"
+                            spellCheck
+                          />
+                          <button
+                            type="button"
+                            className="btnSecondary"
+                            disabled={picking || researchBusy !== null || judging}
+                            onClick={() => runResearch(slotIdx, { counter: true, refine: true })}
+                          >
+                            {busyCounter ? "Counter research…" : "Re-run counter with notes"}
+                          </button>
+                        </div>
+                      </details>
                     ) : null}
                     {busyCounter ? (
-                      <div className="researchProgressWrap" style={{ marginTop: 0 }}>
+                      <div className="researchProgressWrap" style={{ marginTop: 10 }}>
                         <div
                           className="researchProgress"
                           role="progressbar"
@@ -694,132 +828,168 @@ export default function Page() {
                         >
                           <div className="researchProgressIndeterminate" aria-hidden />
                         </div>
-                        <p className="muted researchProgressHint">Searching for contrarian / fade angles on the same matchup.</p>
+                        <p className="muted researchProgressHint">Contrarian web pass — often one to a few minutes.</p>
                       </div>
                     ) : null}
-                    <div className="pre">
-                      {row?.counterNarrativeCombined ? (counterNarrBody || "(No counter prose returned.)") : "Generate a counter dossier to capture evidence against taking this priced side."}
+                    <div className="pre dossierNarrative" style={{ marginTop: 10 }}>
+                      {row?.counterNarrativeCombined
+                        ? (counterNarrBody || "(No counter prose returned.)")
+                        : pickHasResearchForJudge(row)
+                          ? "Optional: run a counter dossier for a skeptic view of this ticket."
+                          : "—"}
                     </div>
-                    {counterSources ? (
-                      <>
-                        <div className="hr" />
-                        <div className="muted" style={{ marginBottom: 6 }}>
-                          Counter sources (verify before relying on)
-                        </div>
-                        <div className="pre">{counterSources}</div>
-                      </>
-                    ) : null}
+                    <SourcesAccordion
+                      id={`src-counter-${slotIdx}`}
+                      title="Counter citations & FACT lines"
+                      sources={counterSources}
+                    />
                   </article>
                 );
               })}
             </div>
-            {judging ? (
-              <div className="researchProgressWrap" style={{ marginTop: 14 }}>
-                <div
-                  className="researchProgress"
-                  role="progressbar"
-                  aria-busy="true"
-                  aria-valuetext="Judge comparing dossiers"
-                >
-                  <div className="researchProgressIndeterminate" aria-hidden />
-                </div>
-                <p className="muted researchProgressHint">Claude is comparing research dossiers — often well under two minutes.</p>
+          </>
+        )}
+      </section>
+
+      {pickBundle?.picks?.length > 0 && judgeGate ? (
+        <section className="card judgeDock">
+          <h2>Claude judge</h2>
+          <p className="muted judgeDockIntro">
+            Compares dossiers already on this page (counter dossiers included where present). With optional notes below, Claude may run a brief web check on{" "}
+            <em>your</em> facts only — not a lock or game prediction.
+          </p>
+          <div className="judgeActionRow">
+            <button
+              type="button"
+              className="btn"
+              disabled={picking || researchBusy !== null || judging}
+              onClick={() => runJudge(false)}
+            >
+              {judging ? "Judging…" : judgeEligibleMulti ? "Judge picks" : "Judge ticket vs counter"}
+            </button>
+          </div>
+          {judging ? (
+            <div className="researchProgressWrap" style={{ marginTop: 14 }}>
+              <div
+                className="researchProgress"
+                role="progressbar"
+                aria-busy="true"
+                aria-valuetext="Judge comparing dossiers"
+              >
+                <div className="researchProgressIndeterminate" aria-hidden />
               </div>
-            ) : null}
-            {judgeVerdict ? (
-              <div className="pickBlock judgeVerdictPanel">
-                <h3 className="pickBlockTitle">
-                  Claude judge · verdict
-                  {judgeVerdict.userContextApplied ? (
-                    <span className="judgeVerdictBadge" title="This pass included your notes below">
-                      With your notes
-                    </span>
-                  ) : null}
-                </h3>
-                {judgeVerdict.judgeMode === "single_pro_contra" ? (
-                  judgeVerdict.ticketStance ? (
-                    <div className="pill pillBlock" style={{ marginBottom: 8 }}>
-                      <span>Ticket stance (from dossiers)</span>
-                      <span className="mono">
-                        {judgeVerdict.ticketStance === "take"
-                          ? "Lean toward playing this DK line"
+              <p className="muted researchProgressHint">Claude is comparing dossiers — often well under two minutes.</p>
+            </div>
+          ) : null}
+          {judgeVerdict ? (
+            <div className="pickBlock judgeVerdictPanel" style={{ marginTop: 14 }}>
+              <h3 className="pickBlockTitle">
+                Verdict
+                {judgeVerdict.userContextApplied ? (
+                  <span className="judgeVerdictBadge" title="This pass included your notes">
+                    With your notes
+                    {judgeVerdict.judgeWebSearchEnabled ? " · web check" : ""}
+                  </span>
+                ) : null}
+              </h3>
+              {judgeVerdict.judgeMode === "single_pro_contra" ? (
+                judgeVerdict.ticketStance ? (
+                  <div className="pill pillBlock" style={{ marginBottom: 8 }}>
+                    <span>Ticket stance (from dossiers)</span>
+                    <span className="mono">
+                      {judgeVerdict.ticketStance === "take"
+                        ? "Lean toward playing this DK line"
+                        : judgeVerdict.ticketStance === "counter"
+                          ? "Counter dossier stronger — favor fading / passing this DK line"
                           : judgeVerdict.ticketStance === "pass"
-                            ? "Lean toward passing / fading this DK line"
+                            ? "Walk away — neither wing is well grounded"
                             : "Evidence too balanced to tilt either way"}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="err" style={{ marginBottom: 10 }}>
-                      Could not read RECOMMENDED_STANCE — review the prose below manually.
-                    </div>
-                  )
-                ) : typeof judgeVerdict.chosenSlotIndex === "number" ? (
+                    </span>
+                  </div>
+                ) : (
+                  <div className="err" style={{ marginBottom: 10 }}>
+                    Could not read RECOMMENDED_STANCE (expected TAKE_TICKET, FAVOR_COUNTER_DOSSIER, PASS_TICKET, or TOO_CLOSE_TO_CALL) — review the prose below manually.
+                  </div>
+                )
+              ) : typeof judgeVerdict.chosenSlotIndex === "number" ? (
+                <>
                   <div className="pill pillBlock" style={{ marginBottom: 8 }}>
                     <span>Recommended ticket</span>
                     <span className="mono">Pick #{judgeVerdict.chosenSlotIndex + 1}</span>
                   </div>
-                ) : (
-                  <div className="err" style={{ marginBottom: 10 }}>
-                    The model reply did not include a valid RECOMMENDED_PICK_INDEX — read the prose below manually.
-                  </div>
-                )}
-                {(judgeVerdict.confidence || judgeVerdict.model) ? (
-                  <div className="kvs pickBlockKvs" style={{ marginTop: 4 }}>
-                    {judgeVerdict.confidence ? (
-                      <>
-                        <div className="k">Judgment calibration</div>
-                        <div className="v mono">{judgeVerdict.confidence} (quality of comparative review)</div>
-                      </>
-                    ) : null}
-                    {judgeVerdict.model ? (
-                      <>
-                        <div className="k">Model</div>
-                        <div className="v mono">{judgeVerdict.model}</div>
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-                {judgeVerdict.oneLineSummary ? <div className="pre judgeOneLine">{judgeVerdict.oneLineSummary}</div> : null}
-                <div className="hr" />
-                <div className="pre">{judgeVerdict.reasoning || judgeVerdict.rawText || "—"}</div>
-                <p className="muted" style={{ marginTop: 12, fontSize: 11, lineHeight: 1.4 }}>
-                  The judge weighs arguments already in Mahowny’s dossiers (and counter dossiers where present); it does not re-fetch the web or guarantee any wager wins or loses.
-                </p>
-                <div className="hr" />
-                <label className="judgeContextLabel" htmlFor="judgeUserContextDraft">
-                  More context for the judge
-                </label>
-                <p className="muted" style={{ marginTop: 4, marginBottom: 8, fontSize: 11, lineHeight: 1.45 }}>
-                  Add preferences, stakes, corrections, lineup notes you trust, or facts not in the dossiers. Claude treats this as{" "}
-                  <strong>bettor-supplied text</strong> — it may shift the verdict versus dossiers alone when you re-run below.
-                </p>
-                <textarea
-                  id="judgeUserContextDraft"
-                  className="judgeContextTextarea"
-                  rows={5}
-                  value={judgeUserContextDraft}
-                  onChange={(e) => setJudgeUserContextDraft(e.target.value)}
-                  disabled={picking || researchBusy !== null || judging}
-                  placeholder="Example: Prefer lower juice; skeptical of injury chatter unless confirmed; leaning dog on this matchup for bankroll sizing…"
-                  spellCheck
-                />
-                <div className="judgeContextActions">
-                  <button
-                    type="button"
-                    className="btnSecondary"
-                    disabled={
-                      picking || researchBusy !== null || judging || !judgeUserContextDraft.trim()
-                    }
-                    onClick={() => runJudge(true)}
-                  >
-                    {judging ? "Judging…" : "Re-run judge with this context"}
-                  </button>
+                  {judgeVerdict.judgeMode === "multi_pick" &&
+                  Array.isArray(judgeVerdict.rankingSlotOrder) &&
+                  judgeVerdict.rankingSlotOrder.length > 1 ? (
+                    <div className="pill pillBlock" style={{ marginBottom: 8 }}>
+                      <span>Full ranking (best → worst)</span>
+                      <ol className="judgeRankList" style={{ margin: "8px 0 0 18px", padding: 0 }}>
+                        {judgeVerdict.rankingSlotOrder.map((slot, ord) => (
+                          <li key={`${slot}-${ord}`} className="mono" style={{ marginBottom: 4 }}>
+                            {ord + 1}. Pick #{slot + 1}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="err" style={{ marginBottom: 10 }}>
+                  The model reply did not include a valid RECOMMENDED_PICK_INDEX — read the prose below manually.
                 </div>
-              </div>
-            ) : null}
-          </>
-        )}
-      </section>
+              )}
+              {(judgeVerdict.confidence || judgeVerdict.model) ? (
+                <div className="kvs pickBlockKvs" style={{ marginTop: 4 }}>
+                  {judgeVerdict.confidence ? (
+                    <>
+                      <div className="k">Judgment calibration</div>
+                      <div className="v mono">{judgeVerdict.confidence} (quality of comparative review)</div>
+                    </>
+                  ) : null}
+                  {judgeVerdict.model ? (
+                    <>
+                      <div className="k">Model</div>
+                      <div className="v mono">{judgeVerdict.model}</div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              {judgeVerdict.oneLineSummary ? <div className="pre judgeOneLine">{judgeVerdict.oneLineSummary}</div> : null}
+              <div className="hr" />
+              <div className="pre">{judgeVerdict.reasoning || judgeVerdict.rawText || "—"}</div>
+              <p className="muted" style={{ marginTop: 12, fontSize: 11, lineHeight: 1.4 }}>
+                Passes without your notes do not browse the web. Use the section below if you want Claude to weigh bettor-supplied context (and optionally verify it on the web).
+              </p>
+              <details className="ctxDisclosure judgeNotesDisclosure" style={{ marginTop: 14 }}>
+                <summary className="ctxDisclosureSummary">Optional notes for the judge</summary>
+                <div className="ctxDisclosureBody">
+                  <textarea
+                    id="judgeUserContextDraft"
+                    className="judgeContextTextarea"
+                    rows={5}
+                    value={judgeUserContextDraft}
+                    onChange={(e) => setJudgeUserContextDraft(e.target.value)}
+                    disabled={picking || researchBusy !== null || judging}
+                    placeholder="Preferences, corrections, lineup facts you trust…"
+                    spellCheck
+                  />
+                  <div className="judgeContextActions">
+                    <button
+                      type="button"
+                      className="btnSecondary"
+                      disabled={
+                        picking || researchBusy !== null || judging || !judgeUserContextDraft.trim()
+                      }
+                      onClick={() => runJudge(true)}
+                    >
+                      {judging ? "Judging…" : "Re-run judge with these notes"}
+                    </button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   );
 }

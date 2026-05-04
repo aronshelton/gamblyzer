@@ -23,8 +23,19 @@ export async function POST(req) {
     const counter = Boolean(body?.counter);
     if (!pick) throw new Error("Missing pick");
 
-    console.log(`[gamblyzer] req=${reqId} research start counter=${counter ? "1" : "0"}`);
-    const runner = counter ? generateCounterResearchNarrative(pick) : generateResearchNarrative(pick);
+    const userContext = typeof body?.userContext === "string" ? body.userContext : "";
+    const gapClosure = typeof body?.gapClosure === "string" ? body.gapClosure : "";
+    const ucLen = userContext.trim().length;
+    const gcLen = gapClosure.trim().length;
+    console.log(
+      `[gamblyzer] req=${reqId} research start counter=${counter ? "1" : "0"} user_ctx_chars=${ucLen} gap_chars=${gcLen}`
+    );
+    const opts = {};
+    if (ucLen) opts.userContext = userContext;
+    if (gcLen) opts.gapClosure = gapClosure;
+    const runner = counter
+      ? generateCounterResearchNarrative(pick, opts)
+      : generateResearchNarrative(pick, opts);
     const result = await withTimeout(runner, RESEARCH_MS);
     console.log(`[gamblyzer] req=${reqId} research ok`);
     return Response.json(result, { status: 200 });
@@ -33,4 +44,3 @@ export async function POST(req) {
     return Response.json({ error: e?.message || String(e) }, { status: 400 });
   }
 }
-
