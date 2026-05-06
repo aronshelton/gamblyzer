@@ -517,6 +517,7 @@ export default function Page() {
                   const away = p?.fixture?.participant2Name || "Away";
                   const home = p?.fixture?.participant1Name || "Home";
                   const dec = Number(p?.dkRow?.decimalOdds);
+                  const startLabel = p?.fixture?.startTime ? new Date(p.fixture.startTime).toLocaleString() : "";
                   const inPool = myPool.has(p.index);
                   return (
                     <div
@@ -534,6 +535,7 @@ export default function Page() {
                         <div className="poolRowMeta mono">
                           {p?.sportLabel || "—"} · {p?.dkRow?.american || "—"}
                           {Number.isFinite(dec) ? ` (${dec.toFixed(3)} dec)` : ""}
+                          {startLabel ? ` · ${startLabel}` : ""}
                         </div>
                       </div>
                       <div className="poolRowActions">
