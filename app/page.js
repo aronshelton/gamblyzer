@@ -9,6 +9,22 @@ function fmtOdds(n) {
   return `${Math.round(v)}`;
 }
 
+function addUsage(a, b) {
+  const ai = Number(a?.input_tokens) || 0;
+  const ao = Number(a?.output_tokens) || 0;
+  const bi = Number(b?.input_tokens) || 0;
+  const bo = Number(b?.output_tokens) || 0;
+  return { input_tokens: ai + bi, output_tokens: ao + bo };
+}
+
+function fmtMoneyUsd(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  if (v === 0) return "$0.00";
+  if (v < 0.01) return "<$0.01";
+  return `$${v.toFixed(2)}`;
+}
+
 function splitNarrativeAndSources(combined) {
   const s = String(combined || "");
   const parts = s.split(/\n<<<GAMBLYZER_SOURCES>>>\n/);
@@ -109,6 +125,58 @@ export default function Page() {
   }, [pickBundle]);
 
   const judgeGate = judgeEligibleMulti || judgeEligibleSingle;
+
+  const currentRunUsage = useMemo(() => {
+    let usage = { input_tokens: 0, output_tokens: 0 };
+    let cost = 0;
+    let hasAny = false;
+    let hasAnyCost = false;
+    let webSearchCalls = 0;
+    const missingPricingEnv = new Set();
+
+    const picks = Array.isArray(pickBundle?.picks) ? pickBundle.picks : [];
+    for (const p of picks) {
+      const u = p?.llmUsage?.usage_total;
+      if (u && (Number(u.input_tokens) || Number(u.output_tokens))) {
+        usage = addUsage(usage, u);
+        hasAny = true;
+      }
+      const c = p?.llmUsage?.estimated_cost_usd;
+      if (typeof c === "number" && Number.isFinite(c)) {
+        cost += c;
+        hasAnyCost = true;
+      }
+      const ws = p?.llmUsage?.web_search_calls;
+      if (Number.isInteger(ws) && ws > 0) webSearchCalls += ws;
+      const hint = p?.llmUsage?.pricing_hint?.env;
+      if (Array.isArray(hint)) hint.forEach((k) => missingPricingEnv.add(String(k)));
+    }
+
+    const ju = judgeVerdict?.llmUsage?.usage_total;
+    if (ju && (Number(ju.input_tokens) || Number(ju.output_tokens))) {
+      usage = addUsage(usage, ju);
+      hasAny = true;
+    }
+    const jc = judgeVerdict?.llmUsage?.estimated_cost_usd;
+    if (typeof jc === "number" && Number.isFinite(jc)) {
+      cost += jc;
+      hasAnyCost = true;
+    }
+    const jws = judgeVerdict?.llmUsage?.web_search_calls;
+    if (Number.isInteger(jws) && jws > 0) webSearchCalls += jws;
+    const jhint = judgeVerdict?.llmUsage?.pricing_hint?.env;
+    if (Array.isArray(jhint)) jhint.forEach((k) => missingPricingEnv.add(String(k)));
+
+    if (!hasAny) return null;
+    const totalTokens = (Number(usage.input_tokens) || 0) + (Number(usage.output_tokens) || 0);
+    return {
+      ...usage,
+      total_tokens: totalTokens,
+      estimated_cost_usd: hasAnyCost ? cost : null,
+      web_search_calls: webSearchCalls,
+      pricing_env_hint: missingPricingEnv.size ? [...missingPricingEnv] : null,
+    };
+  }, [pickBundle, judgeVerdict]);
 
   useEffect(() => {
     setJudgeVerdict(null);
@@ -587,6 +655,47 @@ export default function Page() {
           </div>
         ) : (
           <>
+            {currentRunUsage ? (
+              <div className="pill pillBlock" style={{ marginBottom: 12 }}>
+                <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                  <strong>Current run usage:</strong>{" "}
+                  <span className="mono">
+                    {currentRunUsage.total_tokens.toLocaleString()} tok
+                  </span>{" "}
+                  (in{" "}
+                  <span className="mono">{currentRunUsage.input_tokens.toLocaleString()}</span>, out{" "}
+                  <span className="mono">{currentRunUsage.output_tokens.toLocaleString()}</span>
+                  )
+                  {currentRunUsage.web_search_calls ? (
+                    <>
+                      {" "}
+                      · web searches <span className="mono">{currentRunUsage.web_search_calls}</span>
+                    </>
+                  ) : null}
+                  {" "}
+                  · <strong>Est.</strong>{" "}
+                  {currentRunUsage.estimated_cost_usd != null ? (
+                    <span className="mono">{fmtMoneyUsd(currentRunUsage.estimated_cost_usd)}</span>
+                  ) : currentRunUsage.pricing_env_hint?.length ? (
+                    <span className="mono">—</span>
+                  ) : (
+                    <span className="mono">—</span>
+                  )}
+                  {currentRunUsage.estimated_cost_usd == null && currentRunUsage.pricing_env_hint?.length ? (
+                    <>
+                      {" "}
+                      <span className="muted">
+                        (set{" "}
+                        <span className="mono">
+                          {currentRunUsage.pricing_env_hint.join(", ")}
+                        </span>
+                        )
+                      </span>
+                    </>
+                  ) : null}
+                </span>
+              </div>
+            ) : null}
             {pickBundle.pickBatchRequested > 1 ? (
               <div className="pill pillBlock">
                 <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
@@ -927,7 +1036,7 @@ export default function Page() {
                       <ol className="judgeRankList" style={{ margin: "8px 0 0 18px", padding: 0 }}>
                         {judgeVerdict.rankingSlotOrder.map((slot, ord) => (
                           <li key={`${slot}-${ord}`} className="mono" style={{ marginBottom: 4 }}>
-                            {ord + 1}. Pick #{slot + 1}
+                            Pick #{slot + 1}
                           </li>
                         ))}
                       </ol>
