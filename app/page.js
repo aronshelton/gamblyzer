@@ -66,10 +66,10 @@ const ODDS_CAP_MIN = -200;
 const ODDS_CAP_MAX = 300;
 
 /**
- * Must stay slightly above `/api/research` server timeout (`GAMBLYZER_RESEARCH_TIMEOUT_MS`,
- * default 240s); raise both if slow models keep timing out.
+ * Must stay above `/api/research` server timeout (`GAMBLYZER_RESEARCH_TIMEOUT_MS`, default 240s)
+ * and allow parallel pro+counter web passes plus three synthesis calls.
  */
-const RESEARCH_FETCH_TIMEOUT_MS = 240_000 + 65_000;
+const RESEARCH_FETCH_TIMEOUT_MS = 240_000 + 120_000;
 
 /** Slightly above `GAMBLYZER_JUDGE_TIMEOUT_MS` (default 180s on `/api/judge`). */
 const JUDGE_FETCH_TIMEOUT_MS = 180_000 + 8000;
@@ -93,8 +93,14 @@ export default function Page() {
   /** Per-slot gap notes for primary vs counter refine panels (kept separate). */
   const [gapPrimaryBySlot, setGapPrimaryBySlot] = useState({});
   const [gapCounterBySlot, setGapCounterBySlot] = useState({});
+  /** When true for a slot, primary Mahowny run also runs parallel counter research + counter narrative (same request). */
+  const [includeCounterBySlot, setIncludeCounterBySlot] = useState({});
   const [judging, setJudging] = useState(false);
   const [judgeVerdict, setJudgeVerdict] = useState(null);
+  /** Maps batch index → bundle slot index for the last multi-pick judge call (so verdict slots match pick # on the page). */
+  const [lastJudgeSlotMap, setLastJudgeSlotMap] = useState(null);
+  /** Per bundle slot: include in multi-pick judge when true; unresearched slots stay false and disabled. */
+  const [judgeSlotIncluded, setJudgeSlotIncluded] = useState({});
   const [judgeUserContextDraft, setJudgeUserContextDraft] = useState("");
   const [err, setErr] = useState("");
   const [pickBundle, setPickBundle] = useState(null);
@@ -113,10 +119,12 @@ export default function Page() {
 
   const leaguesOk = Array.isArray(leagues) && leagues.length > 0;
 
-  const judgeEligibleMulti = useMemo(() => {
-    if (!pickBundle?.picks || pickBundle.picks.length < 2) return false;
-    return pickBundle.picks.every(pickHasResearchForJudge);
+  const researchReadyCount = useMemo(() => {
+    if (!pickBundle?.picks?.length) return 0;
+    return pickBundle.picks.filter(pickHasResearchForJudge).length;
   }, [pickBundle]);
+
+  const judgeEligibleMulti = pickBundle?.picks?.length >= 2 && researchReadyCount >= 2;
 
   const judgeEligibleSingle = useMemo(() => {
     if (!pickBundle?.picks || pickBundle.picks.length !== 1) return false;
@@ -180,6 +188,8 @@ export default function Page() {
 
   useEffect(() => {
     setJudgeVerdict(null);
+    setLastJudgeSlotMap(null);
+    setJudgeSlotIncluded({});
     setJudgeUserContextDraft("");
     setPrimaryResearchContextBySlot({});
     setCounterResearchContextBySlot({});
@@ -383,6 +393,13 @@ export default function Page() {
         if (ctx) body.userContext = ctx;
         if (gap) body.gapClosure = gap;
       }
+      if (!counter) {
+        body.includeCounter = Boolean(includeCounterBySlot[slotIdx]);
+        const cctx = counterCtxFor(slotIdx);
+        const cgap = String(gapCounterBySlot[slotIdx] ?? "").trim();
+        if (cctx) body.counterUserContext = cctx;
+        if (cgap) body.counterGapClosure = cgap;
+      }
       const res = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -398,8 +415,12 @@ export default function Page() {
         if (!row) return prev;
         const merged = [...prev.picks];
         const nextRow = { ...(merged[slotIdx] || {}), ...data };
-        if (!counter && data?.narrativeCombined) {
-          delete nextRow.counterNarrativeCombined;
+        if (!counter) {
+          if (data?.counterNarrativeCombined != null) {
+            nextRow.counterNarrativeCombined = data.counterNarrativeCombined;
+          } else {
+            delete nextRow.counterNarrativeCombined;
+          }
         }
         merged[slotIdx] = nextRow;
         return { ...prev, picks: merged };
@@ -415,6 +436,25 @@ export default function Page() {
     }
   }
 
+  function slotIncludedForJudge(slotIdx, row) {
+    const k = String(slotIdx);
+    if (Object.prototype.hasOwnProperty.call(judgeSlotIncluded, k)) return judgeSlotIncluded[k] !== false;
+    return pickHasResearchForJudge(row);
+  }
+
+  function toggleJudgeSlotInclusion(slotIdx, row) {
+    if (!pickHasResearchForJudge(row)) return;
+    const cur = slotIncludedForJudge(slotIdx, row);
+    setJudgeSlotIncluded((prev) => ({ ...prev, [String(slotIdx)]: !cur }));
+  }
+
+  function bundleSlotFromJudgeBatch(batchIdx) {
+    if (batchIdx == null || !Number.isInteger(batchIdx)) return batchIdx;
+    const m = lastJudgeSlotMap;
+    if (Array.isArray(m) && batchIdx >= 0 && batchIdx < m.length) return m[batchIdx];
+    return batchIdx;
+  }
+
   async function runJudge(includeUserContext) {
     if (!pickBundle?.picks?.length || !judgeGate) return;
     const notes = judgeUserContextDraft.trim();
@@ -422,9 +462,25 @@ export default function Page() {
       setErr("Add notes for the judge in the box below before re-running with context.");
       return;
     }
+    const bundlePicks = pickBundle.picks;
+    let judgeIndices;
+    if (bundlePicks.length === 1) {
+      judgeIndices = [0];
+    } else {
+      judgeIndices = bundlePicks
+        .map((_, i) => i)
+        .filter((i) => pickHasResearchForJudge(bundlePicks[i]) && slotIncludedForJudge(i, bundlePicks[i]));
+      if (judgeIndices.length < 2) {
+        setErr("Select at least two picks with completed primary research (checkboxes below).");
+        return;
+      }
+    }
+    const picksPayload = judgeIndices.map((i) => bundlePicks[i]);
+
     setJudgeVerdict(null);
     setErr("");
     setJudging(true);
+    setLastJudgeSlotMap(judgeIndices);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), JUDGE_FETCH_TIMEOUT_MS);
@@ -432,7 +488,7 @@ export default function Page() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          picks: pickBundle.picks,
+          picks: picksPayload,
           ...(includeUserContext ? { userContext: notes } : {}),
         }),
         signal: controller.signal,
@@ -441,6 +497,7 @@ export default function Page() {
       if (!res.ok) throw new Error(data?.error || res.statusText);
       setJudgeVerdict(data);
     } catch (e) {
+      setLastJudgeSlotMap(null);
       const msg =
         e?.name === "AbortError"
           ? `Timed out waiting for /api/judge (${Math.round(JUDGE_FETCH_TIMEOUT_MS / 1000)}s). Raise GAMBLYZER_JUDGE_TIMEOUT_MS if needed.`
@@ -709,21 +766,23 @@ export default function Page() {
                       <span className="mono">{pickBundle.poolSize}</span>).
                     </>
                   )}{" "}
-                  Run <strong>Mahowny research</strong> on each pick below when you want the slow AI pass (typically one to a few minutes each).
+                  Run <strong>Mahowny research</strong> on each pick below when you want the slow AI pass (primary + bias by default; optional parallel counter in the same run — typically a couple of minutes to a few minutes each).
                 </span>
               </div>
             ) : null}
             {!judgeGate && pickBundle?.picks?.length ? (
               <div className="pill pillBlock">
                 <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
-                  <strong>Claude judge</strong> appears at the bottom when every pick has the required dossiers —{" "}
+                  <strong>Claude judge</strong> appears at the bottom when{" "}
                   {pickBundle.picks.length >= 2 ? (
                     <>
-                      primary research on each line; counter is optional but strengthens comparison.
+                      at least two lines have completed primary research (you’ll choose which to compare). Counter
+                      dossiers optional but add depth.
                     </>
                   ) : (
                     <>
-                      primary research plus a counter dossier on this ticket.
+                      Mahowny primary + bias and a counter dossier exist on this single ticket for ticket-vs-counter
+                      judging.
                     </>
                   )}
                 </span>
@@ -742,7 +801,7 @@ export default function Page() {
                 const multiChosen =
                   judgeVerdict?.judgeMode === "multi_pick" &&
                   typeof judgeVerdict?.chosenSlotIndex === "number" &&
-                  judgeVerdict.chosenSlotIndex === slotIdx;
+                  bundleSlotFromJudgeBatch(judgeVerdict.chosenSlotIndex) === slotIdx;
                 const singleStance = judgeVerdict?.judgeMode === "single_pro_contra" && pickBundle.picks.length === 1 && slotIdx === 0 ? judgeVerdict.ticketStance : null;
                 const articleClass =
                   multiChosen || singleStance === "take"
@@ -785,21 +844,76 @@ export default function Page() {
                     <div className="researchBlock" style={{ marginTop: 12 }}>
                       <div className="muted researchBlockLabel">Mahowny research</div>
                       {!row?.narrativeCombined ? (
-                        <button
-                          type="button"
-                          className="btn"
-                          disabled={picking || researchBusy !== null || judging}
-                          onClick={() => runResearch(slotIdx, { refine: false })}
-                        >
-                          {busyPrimary ? "Researching…" : "Run Mahowny research"}
-                        </button>
+                        <div className="researchPrimaryActions">
+                          <div className="counterDossierToggleRow">
+                            <button
+                              type="button"
+                              className={`counterDossierSwitch ${includeCounterBySlot[slotIdx] ? "isOn" : ""}`}
+                              role="switch"
+                              aria-checked={Boolean(includeCounterBySlot[slotIdx])}
+                              aria-label="Include counter dossier in this research run"
+                              disabled={picking || researchBusy !== null || judging}
+                              onClick={() =>
+                                setIncludeCounterBySlot((prev) => ({
+                                  ...prev,
+                                  [slotIdx]: !Boolean(prev[slotIdx]),
+                                }))
+                              }
+                            >
+                              <span className="counterDossierSwitchTrack" aria-hidden>
+                                <span className="counterDossierSwitchThumb" />
+                              </span>
+                            </button>
+                            <div className="counterDossierToggleCopy">
+                              <span className="counterDossierToggleTitle">Include counter dossier</span>
+                              <span className="counterDossierToggleHint">
+                                Parallel contrarian web pass with primary. Slower, higher cost.
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn"
+                            disabled={picking || researchBusy !== null || judging}
+                            onClick={() => runResearch(slotIdx, { refine: false })}
+                          >
+                            {busyPrimary ? "Researching…" : "Run Mahowny research"}
+                          </button>
+                        </div>
                       ) : null}
                       {row?.narrativeCombined ? (
                         <details className="ctxDisclosure">
                           <summary className="ctxDisclosureSummary">Update research with your notes</summary>
                           <div className="ctxDisclosureBody">
+                            <div className="counterDossierToggleRow" style={{ marginBottom: 12 }}>
+                              <button
+                                type="button"
+                                className={`counterDossierSwitch ${includeCounterBySlot[slotIdx] ? "isOn" : ""}`}
+                                role="switch"
+                                aria-checked={Boolean(includeCounterBySlot[slotIdx])}
+                                aria-label="Include counter dossier when re-running with notes"
+                                disabled={picking || researchBusy !== null || judging}
+                                onClick={() =>
+                                  setIncludeCounterBySlot((prev) => ({
+                                    ...prev,
+                                    [slotIdx]: !Boolean(prev[slotIdx]),
+                                  }))
+                                }
+                              >
+                                <span className="counterDossierSwitchTrack" aria-hidden>
+                                  <span className="counterDossierSwitchThumb" />
+                                </span>
+                              </button>
+                              <div className="counterDossierToggleCopy">
+                                <span className="counterDossierToggleTitle">Include counter dossier</span>
+                                <span className="counterDossierToggleHint">
+                                  When on, re-run bundles contrarian research + narrative. When off, only primary + bias
+                                  — any existing counter dossier on this line is cleared.
+                                </span>
+                              </div>
+                            </div>
                             <p className="muted ctxDisclosureHint">
-                              Re-runs only happen when you add input. Use search directions, gap notes you verified, or both.
+                              Counter search directions and gap notes below apply only when this toggle is on.
                             </p>
                             <label className="researchCtxLabel" htmlFor={`primaryCtx-${slotIdx}`}>
                               Search directions
@@ -851,7 +965,9 @@ export default function Page() {
                             <div className="researchProgressIndeterminate" aria-hidden />
                           </div>
                           <p className="muted researchProgressHint">
-                            Usually about one to a few minutes (web search + narrative).
+                            {includeCounterBySlot[slotIdx]
+                              ? "Parallel web research on pro and counter, then narratives plus bias — often a few minutes."
+                              : "Primary web research, then narrative and bias — usually a bit faster than bundling counter."}
                           </p>
                         </div>
                       ) : null}
@@ -865,6 +981,17 @@ export default function Page() {
                       title="Primary citations & FACT lines"
                       sources={narrSources}
                     />
+                    <div className="hr" />
+                    <div className="muted researchBlockLabel" style={{ marginBottom: 8 }}>
+                      Bias read (over-priced vs underpriced narratives)
+                    </div>
+                    <div className="pre dossierNarrative">
+                      {String(row?.biasNarrative || "").trim()
+                        ? row.biasNarrative
+                        : row?.narrativeCombined
+                          ? "Bias block was not returned for this pick — re-run Mahowny research if needed."
+                          : "—"}
+                    </div>
                     <div className="hr" />
                     <div className="muted researchBlockLabel" style={{ marginBottom: 8 }}>
                       Counter dossier (vs this ticket)
@@ -882,7 +1009,11 @@ export default function Page() {
                       >
                         {busyCounter ? "Counter research…" : "Run counter dossier"}
                       </button>
-                    ) : null}
+                    ) : (
+                      <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                        Refine with notes below, or clear it by re-running primary without “Include counter dossier”.
+                      </p>
+                    )}
                     {pickHasResearchForJudge(row) && row?.counterNarrativeCombined ? (
                       <details className="ctxDisclosure">
                         <summary className="ctxDisclosureSummary">Update counter dossier with your notes</summary>
@@ -946,7 +1077,7 @@ export default function Page() {
                       {row?.counterNarrativeCombined
                         ? (counterNarrBody || "(No counter prose returned.)")
                         : pickHasResearchForJudge(row)
-                          ? "Optional: run a counter dossier for a skeptic view of this ticket."
+                          ? "Optional: run counter dossier, or check “Include counter dossier” on a primary re-run."
                           : "—"}
                     </div>
                     <SourcesAccordion
@@ -966,9 +1097,37 @@ export default function Page() {
         <section className="card judgeDock">
           <h2>Claude judge</h2>
           <p className="muted judgeDockIntro">
-            Compares dossiers already on this page (counter dossiers included where present). With optional notes below, Claude may run a brief web check on{" "}
-            <em>your</em> facts only — not a lock or game prediction.
+            Reads the full dossier per ticket — primary, counter (if present), and bias — for narrative defensibility (not
+            line counts). With optional notes below, Claude may run a brief web check on <em>your</em> facts only — not
+            a lock or game prediction.
           </p>
+          {pickBundle.picks.length >= 2 ? (
+            <div className="judgePickSelector" style={{ marginBottom: 14 }}>
+              <div className="muted" style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+                Include in comparison (at least two with primary research):
+              </div>
+              <ul className="judgePickSelectorList">
+                {pickBundle.picks.map((row, slotIdx) => {
+                  const ready = pickHasResearchForJudge(row);
+                  const on = slotIncludedForJudge(slotIdx, row);
+                  return (
+                    <li key={`judge-inc-${pickBundle.batchId}-${slotIdx}`}>
+                      <label className={`judgePickSelectorItem ${ready ? "" : "judgePickSelectorItemDisabled"}`}>
+                        <input
+                          type="checkbox"
+                          checked={ready && on}
+                          disabled={picking || researchBusy !== null || judging || !ready}
+                          onChange={() => toggleJudgeSlotInclusion(slotIdx, row)}
+                        />{" "}
+                        <span className="mono">Pick #{slotIdx + 1}</span>
+                        {!ready ? <span className="muted"> — run primary research first</span> : null}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
           <div className="judgeActionRow">
             <button
               type="button"
@@ -976,7 +1135,7 @@ export default function Page() {
               disabled={picking || researchBusy !== null || judging}
               onClick={() => runJudge(false)}
             >
-              {judging ? "Judging…" : judgeEligibleMulti ? "Judge picks" : "Judge ticket vs counter"}
+              {judging ? "Judging…" : judgeEligibleMulti ? "Judge selected picks" : "Judge ticket vs counter"}
             </button>
           </div>
           {judging ? (
@@ -1025,8 +1184,10 @@ export default function Page() {
               ) : typeof judgeVerdict.chosenSlotIndex === "number" ? (
                 <>
                   <div className="pill pillBlock" style={{ marginBottom: 8 }}>
-                    <span>Recommended ticket</span>
-                    <span className="mono">Pick #{judgeVerdict.chosenSlotIndex + 1}</span>
+                    <span>Top-ranked in this batch</span>
+                    <span className="mono">
+                      Pick #{bundleSlotFromJudgeBatch(judgeVerdict.chosenSlotIndex) + 1}
+                    </span>
                   </div>
                   {judgeVerdict.judgeMode === "multi_pick" &&
                   Array.isArray(judgeVerdict.rankingSlotOrder) &&
@@ -1036,7 +1197,7 @@ export default function Page() {
                       <ol className="judgeRankList" style={{ margin: "8px 0 0 18px", padding: 0 }}>
                         {judgeVerdict.rankingSlotOrder.map((slot, ord) => (
                           <li key={`${slot}-${ord}`} className="mono" style={{ marginBottom: 4 }}>
-                            Pick #{slot + 1}
+                            Pick #{bundleSlotFromJudgeBatch(slot) + 1}
                           </li>
                         ))}
                       </ol>

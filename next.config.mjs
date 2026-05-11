@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /** Reduces PackFileCacheStrategy / missing-chunk issues when using `next dev` with Webpack. */
+  /**
+   * Used by `next dev` (default in package.json). Turbopack (`npm run dev:turbopack`) skips this hook and has
+   * seen ENOENT races on `.next/static/development/_buildManifest.js.tmp.*` when compiling API routes.
+   */
   webpack: (config, { dev }) => {
     if (dev) {
       config.cache = { type: "memory" };

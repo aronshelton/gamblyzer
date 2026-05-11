@@ -21,18 +21,26 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
     const pick = body?.pick;
     const counter = Boolean(body?.counter);
+    const includeCounter = !counter && body?.includeCounter === true;
     if (!pick) throw new Error("Missing pick");
 
     const userContext = typeof body?.userContext === "string" ? body.userContext : "";
     const gapClosure = typeof body?.gapClosure === "string" ? body.gapClosure : "";
+    const counterUserContext = typeof body?.counterUserContext === "string" ? body.counterUserContext : "";
+    const counterGapClosure = typeof body?.counterGapClosure === "string" ? body.counterGapClosure : "";
     const ucLen = userContext.trim().length;
     const gcLen = gapClosure.trim().length;
+    const cucLen = counterUserContext.trim().length;
+    const cgcLen = counterGapClosure.trim().length;
     console.log(
-      `[gamblyzer] req=${reqId} research start counter=${counter ? "1" : "0"} user_ctx_chars=${ucLen} gap_chars=${gcLen}`
+      `[gamblyzer] req=${reqId} research start counter=${counter ? "1" : "0"} includeCounter=${includeCounter ? "1" : "0"} user_ctx_chars=${ucLen} gap_chars=${gcLen} counter_ctx_chars=${cucLen} counter_gap_chars=${cgcLen}`
     );
     const opts = {};
     if (ucLen) opts.userContext = userContext;
     if (gcLen) opts.gapClosure = gapClosure;
+    if (cucLen) opts.counterUserContext = counterUserContext;
+    if (cgcLen) opts.counterGapClosure = counterGapClosure;
+    if (includeCounter) opts.includeCounter = true;
     const runner = counter
       ? generateCounterResearchNarrative(pick, opts)
       : generateResearchNarrative(pick, opts);
