@@ -437,6 +437,7 @@ function sportKeyForLeagueCode(code) {
   if (code === 'NBA') return 'basketball_nba';
   if (code === 'MLB') return 'baseball_mlb';
   if (code === 'NHL') return 'icehockey_nhl';
+  if (code === 'EPL') return 'soccer_epl';
   return null;
 }
 
@@ -490,6 +491,7 @@ function flattenCoreLinesFromTheOddsApi(eventOdds) {
           const n = normName(name);
           if (n === normName(home)) bookmakerOutcomeId = 'home';
           else if (n === normName(away)) bookmakerOutcomeId = 'away';
+          else if (n === 'draw') bookmakerOutcomeId = 'draw';
         } else if (bucket === 'spread') {
           const pt = Number(o?.point);
           if (Number.isFinite(pt)) {
@@ -664,13 +666,15 @@ async function findBetFlow(key) {
   console.log(`  ${style.accent('1')} NBA`);
   console.log(`  ${style.accent('2')} MLB`);
   console.log(`  ${style.accent('3')} NHL`);
-  console.log(`  ${style.accent('4')} All (NBA + MLB + NHL)`);
+  console.log(`  ${style.accent('4')} EPL`);
+  console.log(`  ${style.accent('5')} All (NBA + MLB + NHL + EPL)`);
   const leagueChoice = (await ask(`${c.cyan}>${c.reset} `)).trim().toLowerCase();
 
   const league =
     leagueChoice === '2' || leagueChoice === 'mlb' ? { code: 'MLB' } :
     leagueChoice === '3' || leagueChoice === 'nhl' ? { code: 'NHL' } :
-    leagueChoice === '4' || leagueChoice === 'all' ? { code: 'ALL' } :
+    leagueChoice === '4' || leagueChoice === 'epl' ? { code: 'EPL' } :
+    leagueChoice === '5' || leagueChoice === 'all' ? { code: 'ALL' } :
     { code: 'NBA' };
 
   const range = await askOddsRange();
@@ -685,6 +689,7 @@ async function findBetFlow(key) {
         { code: 'NBA', sportKey: sportKeyForLeagueCode('NBA') },
         { code: 'MLB', sportKey: sportKeyForLeagueCode('MLB') },
         { code: 'NHL', sportKey: sportKeyForLeagueCode('NHL') },
+        { code: 'EPL', sportKey: sportKeyForLeagueCode('EPL') },
       ].filter((x) => x.sportKey);
 
       // Sequential to avoid burst + to keep quota usage predictable.

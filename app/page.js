@@ -61,7 +61,16 @@ function primaryPickButtonLabel({ picking, pickCount, myPoolSize }) {
   return "Generate Mahowny’s Pick";
 }
 
-const ALL_LEAGUES = ["NBA", "MLB", "NHL"];
+const ALL_LEAGUES = ["NBA", "MLB", "NHL", "EPL"];
+
+function mainSportsbookLabel(p) {
+  if (p?.sportsbookLabel) return p.sportsbookLabel;
+  const b = String(p?.dkRow?.book || "").toLowerCase();
+  if (b === "bovada") return "Bovada";
+  if (b === "draftkings") return "DraftKings";
+  if (!b) return "Sportsbook";
+  return b.charAt(0).toUpperCase() + b.slice(1);
+}
 const ODDS_CAP_MIN = -200;
 const ODDS_CAP_MAX = 300;
 
@@ -620,7 +629,7 @@ export default function Page() {
             <div className="poolPanel">
               <div className="pill pillBlock" style={{ borderRadius: 0, border: "none", borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
                 <span className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
-                  Eligible DraftKings lines (same sort as the random pick).{" "}
+                  Eligible sportsbook lines (same sort as the random pick).{" "}
                   {poolPreview.previewsTruncated
                     ? `Showing first ${poolPreview.previews.length} of ${poolPreview.poolSize}.`
                     : `All ${poolPreview.poolSize} listed.`}{" "}
@@ -658,7 +667,7 @@ export default function Page() {
                           {p?.dkRow?.marketName || "—"} · {p?.dkRow?.outcome || "—"}
                         </div>
                         <div className="poolRowMeta mono">
-                          {p?.sportLabel || "—"} · {p?.dkRow?.american || "—"}
+                          {p?.sportLabel || "—"} · {mainSportsbookLabel(p)} · {p?.dkRow?.american || "—"}
                           {Number.isFinite(dec) ? ` (${dec.toFixed(3)} dec)` : ""}
                           {startLabel ? ` · ${startLabel}` : ""}
                         </div>
@@ -830,7 +839,7 @@ export default function Page() {
                       <div className="v mono">{row?.sportLabel || "—"}</div>
                       <div className="k">Start</div>
                       <div className="v mono">{row?.fixture?.startTime ? new Date(row.fixture.startTime).toLocaleString() : "—"}</div>
-                      <div className="k">DraftKings</div>
+                      <div className="k">{mainSportsbookLabel(row)}</div>
                       <div className="v mono">{row?.dkRow?.outcome} · {row?.dkRow?.american || "—"} (dec {Number(row?.dkRow?.decimalOdds || 0).toFixed(3)})</div>
                       <div className="k">Polymarket</div>
                       <div className="v mono">{row?.polyRow ? `${row.polyRow.outcome} · ${row.polyRow.american || "—"} (dec ${Number(row.polyRow.decimalOdds).toFixed(3)})` : "—"}</div>
