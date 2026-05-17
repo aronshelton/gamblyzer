@@ -12,7 +12,8 @@
     "clean": "rm -rf .next node_modules/.cache",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:historical": "node --env-file=.env.local scripts/test-historical-line-movement.mjs"
   },
   "dependencies": {
     "next": "^15.5.0",
